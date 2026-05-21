@@ -1,57 +1,88 @@
-import { createClient } from "@/lib/supabase-server";
+import { redirect } from "next/navigation";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+import StaffDashboardUI from "@/components/StaffDashboardUI";
 
-export default async function StaffPage() {
-    const supabase = await createClient();
+export default async function StaffDashboard() {
+    const supabase =
+        await createServerSupabaseClient();
 
-    const { data: staff } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("role", "staff");
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        redirect("/login");
+    }
+
+    const { data: profile } =
+        await supabase
+            .from("profiles")
+            .select("*")
+            .eq("auth_id", user.id)
+            .single();
+
+    if (!profile) {
+        redirect("/login");
+    }
+
+    const today = new Date()
+        .toISOString()
+        .split("T")[0];
+
+    const { data: attendance } =
+        await supabase
+            .from("attendance")
+            .select("*")
+            .eq("staff_id", profile.id)
+            .eq("date", today)
+            .maybeSingle();
+
+    // TOTAL STAFF
+    const { count: totalStaff } =
+        await supabase
+            .from("profiles")
+            .select("*", {
+                count: "exact",
+                head: true,
+            })
+            .eq("role", "staff");
+
+    // PRESENT TODAY
+    const { count: presentToday } =
+        await supabase
+            .from("attendance")
+            .select("*", {
+                count: "exact",
+                head: true,
+            })
+            .eq("date", today)
+            .eq("is_present", true);
+
+    // DEDUCTIONS
+    const { data: deductions } =
+        await supabase
+            .from("deductions")
+            .select("amount")
+            .eq("staff_id", profile.id);
+
+    const totalDeduction =
+        deductions?.reduce(
+            (sum, item) =>
+                sum + item.amount,
+            0
+        ) || 0;
 
     return (
-        <main className="p-6">
-            <h1 className="text-3xl font-bold mb-6">
-                Staff
-            </h1>
-
-            <div className="bg-white rounded-2xl shadow overflow-hidden">
-                <table className="w-full">
-                    <thead className="bg-zinc-100">
-                        <tr>
-                            <th className="p-4 text-left">
-                                Name
-                            </th>
-                            <th className="p-4 text-left">
-                                Email
-                            </th>
-                            <th className="p-4 text-left">
-                                Salary
-                            </th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {staff?.map((item) => (
-                            <tr
-                                key={item.id}
-                                className="border-t"
-                            >
-                                <td className="p-4">
-                                    {item.name}
-                                </td>
-
-                                <td className="p-4">
-                                    {item.email}
-                                </td>
-
-                                <td className="p-4">
-                                    ₹{item.salary}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </main>
+        <StaffDashboardUI
+            profile={profile}
+            attendance={attendance}
+            stats={{
+                totalStaff:
+                    totalStaff || 0,
+                presentToday:
+                    presentToday || 0,
+                totalDeduction,
+            }}
+        />
     );
 }
