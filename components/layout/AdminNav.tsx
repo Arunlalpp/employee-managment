@@ -4,18 +4,46 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  Clock,
+  Clock3,
   Wallet,
+  BarChart3,
   LogOut,
+  WalletCards,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Home" },
-  { href: "/admin/staff", icon: Users, label: "Staff" },
-  { href: "/admin/attendance", icon: Clock, label: "Attendance" },
-  { href: "/admin/salary", icon: Wallet, label: "Salary" },
+  {
+    href: "/admin/dashboard",
+    icon: LayoutDashboard,
+    label: "Home",
+  },
+  {
+    href: "/admin/staff",
+    icon: Users,
+    label: "Staff",
+  },
+  {
+    href: "/admin/attendance",
+    icon: Clock3,
+    label: "Attendance",
+  },
+  {
+    href: "/admin/salary",
+    icon: Wallet,
+    label: "Salary",
+  },
+  {
+    href: "/admin/reports",
+    icon: BarChart3,
+    label: "Reports",
+  },
+  {
+    href: "/admin/advance-requests",
+    icon: WalletCards,
+    label: "Requests",
+  },
 ];
 
 export default function AdminNav() {

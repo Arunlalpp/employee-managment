@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase";
 import {
     TrendingDown,
     CalendarDays,
+    Trophy,
+    Clock3,
 } from "lucide-react";
 
 import {
@@ -34,8 +36,37 @@ export default function StaffSalary() {
     const [advances, setAdvances] =
         useState<any[]>([]);
 
+    const [
+        advanceRequests,
+        setAdvanceRequests,
+    ] = useState<any[]>([]);
+
+    const [profitBonus, setProfitBonus] =
+        useState(0);
+
     const [loading, setLoading] =
         useState(true);
+
+    // MODAL
+    const [
+        showAdvanceModal,
+        setShowAdvanceModal,
+    ] = useState(false);
+
+    const [
+        advanceAmount,
+        setAdvanceAmount,
+    ] = useState("");
+
+    const [
+        advanceReason,
+        setAdvanceReason,
+    ] = useState("");
+
+    const [
+        advanceLoading,
+        setAdvanceLoading,
+    ] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -84,11 +115,14 @@ export default function StaffSalary() {
                 0
             ).getDate()}`;
 
-            // ATTENDANCE
-            const {
-                data: att,
-            } =
-                await supabase
+            const [
+                { data: att },
+                { data: adv },
+                { data: report },
+                { data: requests },
+            ] = await Promise.all([
+                // ATTENDANCE
+                supabase
                     .from(
                         "attendance"
                     )
@@ -111,13 +145,10 @@ export default function StaffSalary() {
                             ascending:
                                 false,
                         }
-                    );
+                    ),
 
-            // ADVANCES
-            const {
-                data: adv,
-            } =
-                await supabase
+                // ADVANCES
+                supabase
                     .from(
                         "advances"
                     )
@@ -133,7 +164,38 @@ export default function StaffSalary() {
                     .lte(
                         "date",
                         monthEnd
-                    );
+                    ),
+
+                // REPORT
+                supabase
+                    .from(
+                        "monthly_store_reports"
+                    )
+                    .select("*")
+                    .eq(
+                        "month",
+                        selectedMonth
+                    )
+                    .maybeSingle(),
+
+                // REQUESTS
+                supabase
+                    .from(
+                        "advance_requests"
+                    )
+                    .select("*")
+                    .eq(
+                        "staff_id",
+                        prof.id
+                    )
+                    .order(
+                        "requested_at",
+                        {
+                            ascending:
+                                false,
+                        }
+                    ),
+            ]);
 
             setAttendance(
                 att || []
@@ -142,12 +204,98 @@ export default function StaffSalary() {
             setAdvances(
                 adv || []
             );
+
+            setAdvanceRequests(
+                requests || []
+            );
+
+            setProfitBonus(
+                report?.bonus_per_staff ||
+                0
+            );
         } catch (error) {
             console.log(error);
         } finally {
             setLoading(false);
         }
     };
+
+    // SUBMIT ADVANCE
+    const handleAdvanceRequest =
+        async () => {
+            try {
+                setAdvanceLoading(true);
+
+                const supabase =
+                    createClient();
+
+                const {
+                    data: { user },
+                } =
+                    await supabase.auth.getUser();
+
+                if (!user) return;
+
+                const { data: prof } =
+                    await supabase
+                        .from("profiles")
+                        .select("*")
+                        .eq(
+                            "auth_id",
+                            user.id
+                        )
+                        .single();
+
+                if (!prof) return;
+
+                const { error } =
+                    await supabase
+                        .from(
+                            "advance_requests"
+                        )
+                        .insert({
+                            staff_id:
+                                prof.id,
+
+                            amount:
+                                Number(
+                                    advanceAmount
+                                ),
+
+                            reason:
+                                advanceReason,
+
+                            status:
+                                "pending",
+                        });
+
+                if (error) {
+                    alert(
+                        error.message
+                    );
+
+                    return;
+                }
+
+                alert(
+                    "Advance request submitted"
+                );
+
+                setShowAdvanceModal(
+                    false
+                );
+
+                setAdvanceAmount("");
+
+                setAdvanceReason("");
+
+                fetchData();
+            } catch (error) {
+                console.log(error);
+            } finally {
+                setAdvanceLoading(false);
+            }
+        };
 
     if (loading) {
         return (
@@ -157,15 +305,37 @@ export default function StaffSalary() {
         );
     }
 
-    // CALCULATIONS
+    // PRESENT DAYS
     const daysPresent =
         attendance.filter(
             (a) => a.is_present
         ).length;
 
+    // ALLOWANCE
     const allowance =
-        daysPresent * 30;
+        attendance.reduce(
+            (sum, item) =>
+                sum +
+                Number(
+                    item.allowance_earned ||
+                    0
+                ),
+            0
+        );
 
+    // OT BONUS
+    const overtimeBonus =
+        attendance.reduce(
+            (sum, item) =>
+                sum +
+                Number(
+                    item.overtime_bonus ||
+                    0
+                ),
+            0
+        );
+
+    // ADVANCES
     const advanceTotal =
         advances.reduce(
             (sum, item) =>
@@ -176,14 +346,18 @@ export default function StaffSalary() {
             0
         );
 
+    // BASE SALARY
     const salary =
         Number(
             profile?.salary || 0
         );
 
+    // NET SALARY
     const netSalary =
         salary +
-        allowance -
+        allowance +
+        overtimeBonus +
+        profitBonus -
         advanceTotal;
 
     // MONTH NAVIGATION
@@ -260,8 +434,8 @@ export default function StaffSalary() {
                 </button>
             </div>
 
-            {/* NET SALARY CARD */}
-            <div className="rounded-3xl p-5 mb-5 bg-gradient-to-br from-yellow-900/40 to-zinc-900 border border-yellow-500/20">
+            {/* NET SALARY */}
+            <div className="rounded-3xl p-6 mb-5 bg-gradient-to-br from-yellow-900/40 to-zinc-900 border border-yellow-500/20">
                 <p className="text-yellow-500 text-xs uppercase tracking-widest mb-2">
                     Net Salary
                 </p>
@@ -271,10 +445,20 @@ export default function StaffSalary() {
                 </h2>
 
                 <p className="text-zinc-400 text-sm mt-2">
-                    Salary after
-                    allowance &
-                    deductions
+                    Salary after all bonuses & deductions
                 </p>
+
+                {/* REQUEST BUTTON */}
+                <button
+                    onClick={() =>
+                        setShowAdvanceModal(
+                            true
+                        )
+                    }
+                    className="w-full mt-5 bg-yellow-500 hover:bg-yellow-400 transition-all text-black font-semibold rounded-2xl py-4"
+                >
+                    Request Advance
+                </button>
             </div>
 
             {/* BREAKDOWN */}
@@ -286,9 +470,21 @@ export default function StaffSalary() {
                     />
 
                     <Row
-                        label={`Allowance (${daysPresent} days × ₹30)`}
+                        label={`Allowance (${daysPresent} days)`}
                         value={`+₹${allowance}`}
                         color="text-green-500"
+                    />
+
+                    <Row
+                        label="Overtime Bonus"
+                        value={`+₹${overtimeBonus}`}
+                        color="text-blue-400"
+                    />
+
+                    <Row
+                        label="Profit Bonus"
+                        value={`+₹${profitBonus}`}
+                        color="text-emerald-400"
                     />
 
                     <Row
@@ -308,155 +504,251 @@ export default function StaffSalary() {
                 </div>
             </div>
 
-            {/* ATTENDANCE */}
+            {/* STATS */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
+                <StatBox
+                    title="Present"
+                    value={daysPresent}
+                    color="text-green-500"
+                    icon={
+                        <CalendarDays className="w-5 h-5" />
+                    }
+                />
+
+                <StatBox
+                    title="Overtime"
+                    value={`₹${overtimeBonus}`}
+                    color="text-blue-400"
+                    icon={
+                        <Clock3 className="w-5 h-5" />
+                    }
+                />
+
+                <StatBox
+                    title="Profit Bonus"
+                    value={`₹${profitBonus}`}
+                    color="text-emerald-400"
+                    icon={
+                        <Trophy className="w-5 h-5" />
+                    }
+                />
+
+                <StatBox
+                    title="Advances"
+                    value={`₹${advanceTotal}`}
+                    color="text-red-500"
+                    icon={
+                        <TrendingDown className="w-5 h-5" />
+                    }
+                />
+            </div>
+
+            {/* ADVANCE REQUESTS */}
             <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 mb-5">
-                <div className="flex items-center gap-2 mb-5">
-                    <CalendarDays className="w-5 h-5 text-yellow-400" />
+                <h2 className="text-xl font-semibold mb-5">
+                    Advance Requests
+                </h2>
 
-                    <h2 className="text-lg font-semibold">
-                        Attendance
-                    </h2>
+                <div className="space-y-3">
+                    {advanceRequests.map(
+                        (item) => (
+                            <div
+                                key={item.id}
+                                className="bg-zinc-800 rounded-2xl p-4"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-semibold">
+                                            ₹
+                                            {
+                                                item.amount
+                                            }
+                                        </p>
+
+                                        <p className="text-zinc-500 text-sm mt-1">
+                                            {
+                                                item.reason
+                                            }
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        {item.status ===
+                                            "pending" && (
+                                                <span className="bg-yellow-500/20 text-yellow-400 text-xs px-3 py-1 rounded-full">
+                                                    Pending
+                                                </span>
+                                            )}
+
+                                        {item.status ===
+                                            "approved" && (
+                                                <span className="bg-green-500/20 text-green-400 text-xs px-3 py-1 rounded-full">
+                                                    Approved
+                                                </span>
+                                            )}
+
+                                        {item.status ===
+                                            "rejected" && (
+                                                <span className="bg-red-500/20 text-red-400 text-xs px-3 py-1 rounded-full">
+                                                    Rejected
+                                                </span>
+                                            )}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    )}
+
+                    {advanceRequests.length ===
+                        0 && (
+                            <div className="text-center text-zinc-500 py-6">
+                                No advance requests
+                            </div>
+                        )}
                 </div>
+            </div>
 
-                <div className="grid grid-cols-3 gap-3 mb-5">
-                    <StatBox
-                        title="Present"
-                        value={daysPresent}
-                        color="text-green-500"
-                    />
+            {/* ATTENDANCE */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
+                <h2 className="text-xl font-semibold mb-5">
+                    Attendance History
+                </h2>
 
-                    <StatBox
-                        title="Absent"
-                        value={
-                            attendance.filter(
-                                (
-                                    a
-                                ) =>
-                                    !a.is_present
-                            )
-                                .length
-                        }
-                        color="text-red-500"
-                    />
-
-                    <StatBox
-                        title="Allowance"
-                        value={`₹${allowance}`}
-                        color="text-yellow-400"
-                    />
-                </div>
-
-                <div className="space-y-2">
+                <div className="space-y-3">
                     {attendance.map(
                         (item) => (
                             <div
                                 key={
                                     item.id
                                 }
-                                className="flex items-center justify-between bg-zinc-800 rounded-2xl p-4"
+                                className="bg-zinc-800 rounded-2xl p-4"
                             >
-                                <div>
-                                    <p className="font-medium">
-                                        {format(
-                                            new Date(
-                                                item.date
-                                            ),
-                                            "dd MMM yyyy"
-                                        )}
-                                    </p>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-medium">
+                                            {format(
+                                                new Date(
+                                                    item.date
+                                                ),
+                                                "dd MMM yyyy"
+                                            )}
+                                        </p>
 
-                                    <p className="text-xs text-zinc-500">
-                                        {item.check_in
-                                            ? new Date(
-                                                item.check_in
-                                            ).toLocaleTimeString(
-                                                [],
-                                                {
-                                                    hour: "2-digit",
-                                                    minute:
-                                                        "2-digit",
-                                                }
-                                            )
-                                            : "--"}
-                                    </p>
-                                </div>
+                                        <p className="text-xs text-zinc-500 mt-1">
+                                            {item.check_in
+                                                ? new Date(
+                                                    item.check_in
+                                                ).toLocaleTimeString(
+                                                    [],
+                                                    {
+                                                        hour: "2-digit",
+                                                        minute:
+                                                            "2-digit",
+                                                    }
+                                                )
+                                                : "--"}
+                                        </p>
+                                    </div>
 
-                                <div>
-                                    {item.is_present ? (
-                                        <span className="text-green-500 text-sm font-semibold">
-                                            +₹30
-                                        </span>
-                                    ) : (
-                                        <span className="text-red-500 text-sm">
-                                            Absent
-                                        </span>
-                                    )}
+                                    <div className="text-right">
+                                        <p className="text-green-500 font-semibold">
+                                            +₹
+                                            {item.allowance_earned ||
+                                                0}
+                                        </p>
+
+                                        {item.overtime_bonus >
+                                            0 && (
+                                                <p className="text-blue-400 text-xs mt-1">
+                                                    OT +
+                                                    ₹
+                                                    {
+                                                        item.overtime_bonus
+                                                    }
+                                                </p>
+                                            )}
+                                    </div>
                                 </div>
                             </div>
                         )
                     )}
-
-                    {attendance.length ===
-                        0 && (
-                            <div className="text-center text-zinc-500 py-5">
-                                No records
-                            </div>
-                        )}
                 </div>
             </div>
 
-            {/* ADVANCES */}
-            {advances.length >
-                0 && (
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
-                        <div className="flex items-center gap-2 mb-5">
-                            <TrendingDown className="w-5 h-5 text-red-500" />
+            {/* MODAL */}
+            {showAdvanceModal && (
+                <div className="fixed inset-0 z-[999] bg-black/70 backdrop-blur-sm flex items-end">
+                    <div className="bg-zinc-900 rounded-t-3xl p-6 pb-32 w-full border-t border-zinc-800 max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-2xl font-bold mb-5">
+                            Request Advance
+                        </h2>
 
-                            <h2 className="text-lg font-semibold">
-                                Advances
-                            </h2>
-                        </div>
+                        <div className="space-y-4">
+                            <input
+                                type="number"
+                                placeholder="Amount"
+                                value={
+                                    advanceAmount
+                                }
+                                onChange={(
+                                    e
+                                ) =>
+                                    setAdvanceAmount(
+                                        e
+                                            .target
+                                            .value
+                                    )
+                                }
+                                className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl p-4"
+                            />
 
-                        <div className="space-y-3">
-                            {advances.map(
-                                (
-                                    item
-                                ) => (
-                                    <div
-                                        key={
-                                            item.id
-                                        }
-                                        className="flex items-center justify-between bg-zinc-800 rounded-2xl p-4"
-                                    >
-                                        <div>
-                                            <p className="font-medium">
-                                                {
-                                                    item.reason
-                                                }
-                                            </p>
+                            <textarea
+                                placeholder="Reason"
+                                value={
+                                    advanceReason
+                                }
+                                onChange={(
+                                    e
+                                ) =>
+                                    setAdvanceReason(
+                                        e
+                                            .target
+                                            .value
+                                    )
+                                }
+                                className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl p-4 h-28"
+                            />
 
-                                            <p className="text-xs text-zinc-500">
-                                                {format(
-                                                    new Date(
-                                                        item.date
-                                                    ),
-                                                    "dd MMM yyyy"
-                                                )}
-                                            </p>
-                                        </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() =>
+                                        setShowAdvanceModal(
+                                            false
+                                        )
+                                    }
+                                    className="bg-zinc-800 rounded-2xl py-4"
+                                >
+                                    Cancel
+                                </button>
 
-                                        <p className="text-red-500 font-semibold">
-                                            -₹
-                                            {
-                                                item.amount
-                                            }
-                                        </p>
-                                    </div>
-                                )
-                            )}
+                                <button
+                                    onClick={
+                                        handleAdvanceRequest
+                                    }
+                                    disabled={
+                                        advanceLoading
+                                    }
+                                    className="bg-yellow-500 text-black font-semibold rounded-2xl py-4"
+                                >
+                                    {advanceLoading
+                                        ? "Submitting..."
+                                        : "Submit"}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                )}
+                </div>
+            )}
         </div>
     );
 }
@@ -491,18 +783,25 @@ function StatBox({
     title,
     value,
     color,
+    icon,
 }: any) {
     return (
-        <div className="bg-zinc-800 rounded-2xl p-4 text-center">
-            <p className="text-zinc-500 text-xs mb-2">
-                {title}
-            </p>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
+            <div className="flex items-center justify-between mb-3">
+                <p className="text-zinc-400 text-sm">
+                    {title}
+                </p>
 
-            <h3
-                className={`text-2xl font-bold ${color}`}
+                <div className={color}>
+                    {icon}
+                </div>
+            </div>
+
+            <h2
+                className={`text-3xl font-bold ${color}`}
             >
                 {value}
-            </h3>
+            </h2>
         </div>
     );
 }

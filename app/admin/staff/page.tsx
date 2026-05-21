@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import StaffDashboardUI from "@/components/StaffDashboardUI";
+import Link from "next/link";
 
 export default async function StaffDashboard() {
     const supabase =
@@ -73,16 +74,29 @@ export default async function StaffDashboard() {
         ) || 0;
 
     return (
-        <StaffDashboardUI
-            profile={profile}
-            attendance={attendance}
-            stats={{
-                totalStaff:
-                    totalStaff || 0,
-                presentToday:
-                    presentToday || 0,
-                totalDeduction,
-            }}
-        />
+        <main>
+
+            <StaffDashboardUI
+                profile={profile}
+                attendance={attendance}
+                stats={{
+                    totalStaff:
+                        totalStaff || 0,
+                    presentToday:
+                        presentToday || 0,
+                    totalDeduction,
+                }}
+            />
+            <Link
+                href="/admin/staff/add"
+                className="fixed bottom-28 right-5 z-50 bg-yellow-500 text-black shadow-2xl rounded-full px-5 py-4 font-semibold flex items-center gap-2 active:scale-95 transition-all"
+            >
+                <span className="text-2xl leading-none">
+                    +
+                </span>
+
+                Add Staff
+            </Link> 
+        </main>
     );
 }
