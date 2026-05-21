@@ -150,40 +150,62 @@ export default function StaffAttendanceBlock({
         };
 
     // CHECK OUT
-    const handleCheckOut =
-        async () => {
-            try {
-                setLoading(true);
+    const handleCheckOut = async () => {
+        try {
+            setLoading(true);
 
-                const {
-                    error,
-                } =
-                    await supabase
-                        .from(
-                            "attendance"
-                        )
-                        .update({
-                            check_out:
-                                new Date().toISOString(),
-                        })
-                        .eq(
-                            "id",
-                            attendance.id
-                        );
+            const now = new Date();
 
-                if (error) {
-                    alert(
-                        error.message
-                    );
-                    return;
-                }
+            const checkoutTime =
+                now.toISOString();
 
-                await fetchAttendance();
-            } finally {
-                setLoading(false);
+            // SHIFT END TIME
+            const shiftEnd =
+                new Date();
+
+            shiftEnd.setHours(
+                22,
+                30,
+                0,
+                0
+            );
+
+            // BONUS
+            let overtimeBonus = 0;
+
+            if (now > shiftEnd) {
+                overtimeBonus = 50;
             }
-        };
 
+            const { error } =
+                await supabase
+                    .from(
+                        "attendance"
+                    )
+                    .update({
+                        check_out:
+                            checkoutTime,
+
+                        overtime_bonus:
+                            overtimeBonus,
+                    })
+                    .eq(
+                        "id",
+                        attendance.id
+                    );
+
+            if (error) {
+                alert(
+                    error.message
+                );
+                return;
+            }
+
+            await fetchAttendance();
+        } finally {
+            setLoading(false);
+        }
+    };
     // TIME BOXES
     const [hh, mm, ss] =
         elapsed.split(":");
