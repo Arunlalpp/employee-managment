@@ -207,10 +207,10 @@ export default function AdminAttendance() {
                         entry.is_present ? "bg-success/20 text-success" : "bg-gold/10 text-gold"
                       }`}
                     >
-                      {staff.full_name.charAt(0)}
+                      {staff.name?.charAt(0) || "?"}
                     </div>
                     <div>
-                      <p className="text-ink-primary text-sm font-medium">{staff.full_name}</p>
+                      <p className="text-ink-primary text-sm font-medium">{staff.name}</p>
                       {entry.is_present && (
                         <p className="text-success text-[10px]">₹30 allowance earned</p>
                       )}

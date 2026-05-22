@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-import { createClient } from "@/lib/supabase";
-
+import { useMemo } from "react";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useProfile } from "@/lib/hooks/useProfile";
 import {
     CheckCircle,
     XCircle,
@@ -24,216 +23,130 @@ import {
     getMonthLabel,
 } from "@/lib/utils";
 import StaffAttendanceBlock from "@/components/StaffAttendanceBlock";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase";
 
 export default function StaffDashboard() {
-    const [profile, setProfile] =
-        useState<any>(null);
-
-    const [todayRecord, setTodayRecord] =
-        useState<any>(null);
-
-    const [weekRecords, setWeekRecords] =
-        useState<any[]>([]);
-
-    const [monthAdvances, setMonthAdvances] =
-        useState<any[]>([]);
-
-    const [monthPresent, setMonthPresent] =
-        useState(0);
-
-    const [loading, setLoading] =
-        useState(true);
-
     const today = getCurrentDate();
-
     const month = getCurrentMonth();
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    const { data: user, isLoading: userLoading } = useAuth();
+    const { data: profile, isLoading: profileLoading } = useProfile(user?.id);
 
-    const fetchData = async () => {
-        try {
-            setLoading(true);
+    const supabase = createClient();
 
-            const supabase =
-                createClient();
+    const [y, m] = month.split("-");
+    const monthStart = `${y}-${m}-01`;
+    const monthEnd = `${y}-${m}-${new Date(
+        Number(y),
+        Number(m),
+        0
+    ).getDate()}`;
 
-            // AUTH USER
-            const {
-                data: { user },
-            } =
-                await supabase.auth.getUser();
+    const weekStart = format(
+        startOfWeek(new Date(), { weekStartsOn: 1 }),
+        "yyyy-MM-dd"
+    );
+    const weekEnd = format(
+        endOfWeek(new Date(), { weekStartsOn: 1 }),
+        "yyyy-MM-dd"
+    );
 
-            if (!user) return;
+    // TODAY ATTENDANCE
+    const { data: todayRecord } = useQuery({
+        queryKey: ["attendance", profile?.id, today],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("attendance")
+                .select("*")
+                .eq("staff_id", profile!.id)
+                .eq("date", today)
+                .maybeSingle();
+            return data;
+        },
+        enabled: !!profile?.id,
+        staleTime: 2 * 60 * 1000,
+    });
 
-            // PROFILE
-            const { data: prof } =
-                await supabase
-                    .from("profiles")
-                    .select("*")
-                    .eq(
-                        "auth_id",
-                        user.id
-                    )
-                    .single();
+    // WEEK ATTENDANCE
+    const { data: weekRecords = [] } = useQuery({
+        queryKey: ["attendance", profile?.id, "week", weekStart, weekEnd],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("attendance")
+                .select("*")
+                .eq("staff_id", profile!.id)
+                .gte("date", weekStart)
+                .lte("date", weekEnd);
+            return data || [];
+        },
+        enabled: !!profile?.id,
+        staleTime: 2 * 60 * 1000,
+    });
 
-            if (!prof) return;
+    // MONTH ATTENDANCE
+    const { data: monthAttendance = [] } = useQuery({
+        queryKey: ["attendance", profile?.id, "month", monthStart, monthEnd],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("attendance")
+                .select("*")
+                .eq("staff_id", profile!.id)
+                .gte("date", monthStart)
+                .lte("date", monthEnd);
+            return data || [];
+        },
+        enabled: !!profile?.id,
+        staleTime: 5 * 60 * 1000,
+    });
 
-            setProfile(prof);
+    // MONTH ADVANCES
+    const { data: monthAdvances = [] } = useQuery({
+        queryKey: ["advances", profile?.id, monthStart, monthEnd],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("advances")
+                .select("*")
+                .eq("staff_id", profile!.id)
+                .gte("date", monthStart)
+                .lte("date", monthEnd);
+            return data || [];
+        },
+        enabled: !!profile?.id,
+        staleTime: 5 * 60 * 1000,
+    });
 
-            // WEEK RANGE
-            const weekStart = format(
-                startOfWeek(
-                    new Date(),
-                    {
-                        weekStartsOn: 1,
-                    }
-                ),
-                "yyyy-MM-dd"
-            );
+    const stats = useMemo(() => {
+        const monthPresent = monthAttendance.filter(
+            (a: any) => a.is_present
+        ).length;
+        const totalAllowance = monthPresent * 30;
+        const totalAdvances = monthAdvances.reduce(
+            (sum, item) => sum + Number(item.amount),
+            0
+        );
+        const netSalary =
+            Number(profile?.salary || 0) +
+            totalAllowance -
+            totalAdvances;
+        const isPresent = !!todayRecord;
 
-            const weekEnd = format(
-                endOfWeek(
-                    new Date(),
-                    {
-                        weekStartsOn: 1,
-                    }
-                ),
-                "yyyy-MM-dd"
-            );
+        return {
+            monthPresent,
+            totalAllowance,
+            totalAdvances,
+            netSalary,
+            isPresent,
+        };
+    }, [monthAttendance, monthAdvances, profile?.salary, todayRecord]);
 
-            // MONTH RANGE
-            const [y, m] =
-                month.split("-");
-
-            const monthStart = `${y}-${m}-01`;
-
-            const monthEnd = `${y}-${m}-${new Date(
-                Number(y),
-                Number(m),
-                0
-            ).getDate()}`;
-
-            // FETCH DATA
-            const [
-                { data: todayAtt },
-                { data: weekAtt },
-                { data: monthAtt },
-                { data: advances },
-            ] = await Promise.all([
-                // TODAY
-                supabase
-                    .from("attendance")
-                    .select("*")
-                    .eq(
-                        "staff_id",
-                        prof.id
-                    )
-                    .eq("date", today)
-                    .maybeSingle(),
-
-                // WEEK
-                supabase
-                    .from("attendance")
-                    .select("*")
-                    .eq(
-                        "staff_id",
-                        prof.id
-                    )
-                    .gte(
-                        "date",
-                        weekStart
-                    )
-                    .lte(
-                        "date",
-                        weekEnd
-                    ),
-
-                // MONTH
-                supabase
-                    .from("attendance")
-                    .select("*")
-                    .eq(
-                        "staff_id",
-                        prof.id
-                    )
-                    .gte(
-                        "date",
-                        monthStart
-                    )
-                    .lte(
-                        "date",
-                        monthEnd
-                    ),
-
-                // ADVANCES
-                supabase
-                    .from("advances")
-                    .select("*")
-                    .eq(
-                        "staff_id",
-                        prof.id
-                    )
-                    .gte(
-                        "date",
-                        monthStart
-                    )
-                    .lte(
-                        "date",
-                        monthEnd
-                    ),
-            ]);
-
-            setTodayRecord(todayAtt);
-
-            setWeekRecords(
-                weekAtt || []
-            );
-
-            setMonthPresent(
-                (monthAtt || []).filter(
-                    (a: any) =>
-                        a.is_present
-                ).length
-            );
-
-            setMonthAdvances(
-                advances || []
-            );
-        } catch (error) {
-            console.log(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (loading || !profile) {
+    if (userLoading || profileLoading || !profile) {
         return (
             <div className="p-6 text-white">
                 Loading...
             </div>
         );
     }
-
-    // SALARY CALCULATIONS
-    const totalAllowance =
-        monthPresent * 30;
-
-    const totalAdvances =
-        monthAdvances.reduce(
-            (sum, item) =>
-                sum + Number(item.amount),
-            0
-        );
-
-    const netSalary =
-        Number(profile.salary) +
-        totalAllowance -
-        totalAdvances;
-
-    const isPresent =
-        !!todayRecord;
 
     return (
         <div className="px-4 pt-14 pb-44 text-white">
@@ -251,7 +164,7 @@ export default function StaffDashboard() {
             {/* TODAY STATUS */}
             <div className="bg-zinc-900 rounded-3xl p-5 mb-5 border border-zinc-800">
                 <div className="flex items-center gap-3">
-                    {isPresent ? (
+                    {stats.isPresent ? (
                         <CheckCircle className="text-green-500" />
                     ) : (
                         <XCircle className="text-red-500" />
@@ -259,21 +172,21 @@ export default function StaffDashboard() {
 
                     <div>
                         <h2 className="font-semibold text-lg">
-                            {isPresent
+                            {stats.isPresent
                                 ? "Present Today"
                                 : "Absent Today"}
                         </h2>
 
                         <p className="text-sm text-zinc-400">
                             Daily allowance:
-                            {isPresent
+                            {stats.isPresent
                                 ? " ₹30"
                                 : " ₹0"}
                         </p>
                     </div>
                 </div>
 
-                {isPresent && (
+                {stats.isPresent && (
                     <div className="flex gap-8 mt-5">
                         <div>
                             <p className="text-zinc-500 text-xs">
@@ -320,7 +233,7 @@ export default function StaffDashboard() {
                         </p>
 
                         <h3 className="text-4xl font-bold">
-                            {monthPresent}
+                            {stats.monthPresent}
                         </h3>
                     </div>
 
@@ -333,7 +246,7 @@ export default function StaffDashboard() {
                         <h3 className="text-4xl font-bold text-green-500">
                             ₹
                             {
-                                totalAllowance
+                                stats.totalAllowance
                             }
                         </h3>
                     </div>
@@ -360,13 +273,13 @@ export default function StaffDashboard() {
 
                         <h3 className="text-4xl font-bold text-yellow-400">
                             ₹
-                            {netSalary}
+                            {stats.netSalary}
                         </h3>
                     </div>
                 </div>
 
                 {/* ADVANCE */}
-                {totalAdvances >
+                {stats.totalAdvances >
                     0 && (
                         <div className="mt-5 border-t border-zinc-800 pt-5 flex items-center gap-2 text-red-500">
                             <TrendingDown size={18} />
@@ -375,7 +288,7 @@ export default function StaffDashboard() {
                                 Advance deducted:
                                 ₹
                                 {
-                                    totalAdvances
+                                    stats.totalAdvances
                                 }
                             </p>
                         </div>
