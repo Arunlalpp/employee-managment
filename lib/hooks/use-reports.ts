@@ -1,23 +1,26 @@
 "use client";
 
-import { getReports } from "@/app/api/admin/reports/reports.service";
 import { useQuery }
     from "@tanstack/react-query";
+import { getReportsData } from "./services/reports.service";
 
 export function useReports() {
 
     return useQuery({
+
         queryKey: [
             "reports",
         ],
 
         queryFn:
-            getReports,
+            getReportsData,
 
-        staleTime:
-            1000 * 60 * 10,
+        staleTime: 0,
 
-        refetchOnWindowFocus:
-            false,
+        gcTime: 0,
+
+        refetchOnMount: true,
+
+        refetchOnWindowFocus: true,
     });
 }

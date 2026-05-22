@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Wallet, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 const navItems = [
   { href: "/staff/dashboard", icon: LayoutDashboard, label: "Home" },
@@ -13,10 +14,12 @@ const navItems = [
 export default function StaffNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
+    queryClient.clear();
     router.push("/login");
     router.refresh();
   };

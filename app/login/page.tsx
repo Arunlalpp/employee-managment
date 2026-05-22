@@ -105,7 +105,7 @@ export default function LoginPage() {
                                 "var(--font-cormorant)",
                         }}
                     >
-                        GENTS
+                        OGGY
                     </h1>
 
                     <p className="text-ink-secondary text-sm tracking-[0.3em] uppercase font-light">

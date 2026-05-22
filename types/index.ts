@@ -10,6 +10,7 @@ export interface Profile {
     phone?: string;
     joining_date: string;
     is_active: boolean;
+    name: string;
     created_at: string;
 }
 

@@ -10,7 +10,7 @@ export default async function Home() {
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", user.id)
+    .eq("auth_id", user.id)
     .single();
 
   redirect(profile?.role === "admin" ? "/admin/dashboard" : "/staff/dashboard");

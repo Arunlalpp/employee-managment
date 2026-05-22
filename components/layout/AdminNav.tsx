@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 const navItems = [
   {
@@ -49,10 +50,12 @@ const navItems = [
 export default function AdminNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
+    queryClient.clear();
     router.push("/login");
     router.refresh();
   };

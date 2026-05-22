@@ -360,12 +360,10 @@ export default function AdminAttendance() {
                                                     : "bg-yellow-500/20 text-yellow-400"
                                                     }`}
                                             >
-                                                {staff?.full_name
-                                                    ? staff.full_name
+                                                {staff?.name
+                                                    ? staff.name
                                                         .trim()
-                                                        .charAt(
-                                                            0
-                                                        )
+                                                        .charAt(0)
                                                         .toUpperCase()
                                                     : "?"}
                                             </div>
@@ -373,7 +371,7 @@ export default function AdminAttendance() {
                                             <div>
 
                                                 <p className="text-white font-medium">
-                                                    {staff.full_name ||
+                                                    {staff.name ||
                                                         "Unknown"}
                                                 </p>
 

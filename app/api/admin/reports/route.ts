@@ -30,7 +30,7 @@ export async function GET() {
         const endDate =
             `${year}-${String(month).padStart(2, "0")}-31`;
 
-        // PARALLEL FETCH
+        // ONLY CURRENT MONTH DATA
         const [
             reportRes,
             staffRes,
@@ -88,8 +88,9 @@ export async function GET() {
             ]);
 
         return NextResponse.json({
+
             report:
-                reportRes.data,
+                reportRes.data || null,
 
             staff:
                 staffRes.data || [],

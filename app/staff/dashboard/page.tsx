@@ -1,6 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import {
+    useEffect,
+    useMemo,
+} from "react";
+import { useRouter }
+    from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useProfile } from "@/lib/hooks/useProfile";
 import {
@@ -31,11 +36,39 @@ import { useMonthAttendance } from "@/lib/hooks/useMonthAttendance";
 import { useMonthAdvances } from "@/lib/hooks/useMonthAdvances";
 
 export default function StaffDashboard() {
+    const router =
+        useRouter();
     const today = getCurrentDate();
     const month = getCurrentMonth();
 
     const { data: user, isLoading: userLoading } = useAuth();
     const { data: profile, isLoading: profileLoading } = useProfile(user?.id);
+
+    useEffect(() => {
+        if (
+            !userLoading &&
+            !user
+        ) {
+            router.push("/login");
+            return;
+        }
+
+        if (
+            !profileLoading &&
+            profile?.role ===
+                "admin"
+        ) {
+            router.push(
+                "/admin/dashboard"
+            );
+        }
+    }, [
+        user,
+        profile,
+        userLoading,
+        profileLoading,
+        router,
+    ]);
 
     const [y, m] = month.split("-");
     const monthStart = `${y}-${m}-01`;

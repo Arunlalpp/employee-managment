@@ -1,11 +1,16 @@
 "use client";
 
-import { useMutation }
+import {
+    useMutation,
+    useQueryClient,
+}
     from "@tanstack/react-query";
 import { createClient }
     from "@/lib/supabase";
 
 export function useLogin() {
+    const queryClient =
+        useQueryClient();
     const supabase =
         createClient();
 
@@ -66,6 +71,26 @@ export function useLogin() {
                 user,
                 profile,
             };
+        },
+        onSuccess: ({
+            user,
+            profile,
+        }) => {
+            queryClient.removeQueries();
+            queryClient.setQueryData(
+                [
+                    "auth",
+                    "user",
+                ],
+                user
+            );
+            queryClient.setQueryData(
+                [
+                    "profile",
+                    user.id,
+                ],
+                profile
+            );
         },
     });
 }
