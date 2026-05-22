@@ -23,8 +23,12 @@ import {
     getMonthLabel,
 } from "@/lib/utils";
 import StaffAttendanceBlock from "@/components/StaffAttendanceBlock";
-import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase";
+import {
+    useStaffAttendance,
+    useStaffAttendanceRange,
+} from "@/lib/hooks/useAttendance";
+import { useMonthAttendance } from "@/lib/hooks/useMonthAttendance";
+import { useMonthAdvances } from "@/lib/hooks/useMonthAdvances";
 
 export default function StaffDashboard() {
     const today = getCurrentDate();
@@ -32,8 +36,6 @@ export default function StaffDashboard() {
 
     const { data: user, isLoading: userLoading } = useAuth();
     const { data: profile, isLoading: profileLoading } = useProfile(user?.id);
-
-    const supabase = createClient();
 
     const [y, m] = month.split("-");
     const monthStart = `${y}-${m}-01`;
@@ -53,68 +55,32 @@ export default function StaffDashboard() {
     );
 
     // TODAY ATTENDANCE
-    const { data: todayRecord } = useQuery({
-        queryKey: ["attendance", profile?.id, today],
-        queryFn: async () => {
-            const { data } = await supabase
-                .from("attendance")
-                .select("*")
-                .eq("staff_id", profile!.id)
-                .eq("date", today)
-                .maybeSingle();
-            return data;
-        },
-        enabled: !!profile?.id,
-        staleTime: 2 * 60 * 1000,
-    });
+    const { data: todayRecord } = useStaffAttendance(
+        profile?.id || "",
+        today
+    );
 
     // WEEK ATTENDANCE
-    const { data: weekRecords = [] } = useQuery({
-        queryKey: ["attendance", profile?.id, "week", weekStart, weekEnd],
-        queryFn: async () => {
-            const { data } = await supabase
-                .from("attendance")
-                .select("*")
-                .eq("staff_id", profile!.id)
-                .gte("date", weekStart)
-                .lte("date", weekEnd);
-            return data || [];
-        },
-        enabled: !!profile?.id,
-        staleTime: 2 * 60 * 1000,
-    });
+    const { data: weekRecords = [] } = useStaffAttendanceRange(
+        profile?.id || "",
+        "week",
+        weekStart,
+        weekEnd
+    );
 
     // MONTH ATTENDANCE
-    const { data: monthAttendance = [] } = useQuery({
-        queryKey: ["attendance", profile?.id, "month", monthStart, monthEnd],
-        queryFn: async () => {
-            const { data } = await supabase
-                .from("attendance")
-                .select("*")
-                .eq("staff_id", profile!.id)
-                .gte("date", monthStart)
-                .lte("date", monthEnd);
-            return data || [];
-        },
-        enabled: !!profile?.id,
-        staleTime: 5 * 60 * 1000,
-    });
+    const { data: monthAttendance = [] } = useMonthAttendance(
+        profile?.id || "",
+        monthStart,
+        monthEnd
+    );
 
     // MONTH ADVANCES
-    const { data: monthAdvances = [] } = useQuery({
-        queryKey: ["advances", profile?.id, monthStart, monthEnd],
-        queryFn: async () => {
-            const { data } = await supabase
-                .from("advances")
-                .select("*")
-                .eq("staff_id", profile!.id)
-                .gte("date", monthStart)
-                .lte("date", monthEnd);
-            return data || [];
-        },
-        enabled: !!profile?.id,
-        staleTime: 5 * 60 * 1000,
-    });
+    const { data: monthAdvances = [] } = useMonthAdvances(
+        profile?.id || "",
+        monthStart,
+        monthEnd
+    );
 
     const stats = useMemo(() => {
         const monthPresent = monthAttendance.filter(

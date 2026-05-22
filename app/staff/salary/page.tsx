@@ -1,16 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { addMonths, format, parseISO, subMonths } from "date-fns";
 import { TrendingDown, CalendarDays, Trophy, Clock3 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useAuth } from "@/lib/hooks/useAuth";
-import { useProfile } from "@/lib/hooks/useProfile";
-import { useMonthAttendance } from "@/lib/hooks/useMonthAttendance";
-import { useMonthAdvances, useAdvanceRequests } from "@/lib/hooks/useMonthAdvances";
-import { useMonthlyReport } from "@/lib/hooks/useMonthlyReport";
-import { createClient } from "@/lib/supabase";
+import { useAddAdvanceRequest }
+    from "@/lib/hooks/use-advance-mutations";
+import { useStaffSalary }
+    from "@/lib/hooks/use-staff-salary";
 
 export default function StaffSalary() {
     const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
@@ -19,44 +16,40 @@ export default function StaffSalary() {
     const [advanceReason, setAdvanceReason] = useState("");
     const [advanceLoading, setAdvanceLoading] = useState(false);
 
-    const queryClient = useQueryClient();
-    const { data: user } = useAuth();
-    const { data: profile } = useProfile(user?.id);
+    const addAdvanceRequestMutation =
+        useAddAdvanceRequest();
 
-    const [y, m] = selectedMonth.split("-");
-    const monthStart = `${y}-${m}-01`;
-    const monthEnd = `${y}-${m}-${new Date(Number(y), Number(m), 0).getDate()}`;
-
-    const { data: attendance = [] } = useMonthAttendance(profile?.id || "", monthStart, monthEnd);
-    const { data: advances = [] } = useMonthAdvances(profile?.id || "", monthStart, monthEnd);
-    const { data: advanceRequests = [] } = useAdvanceRequests(profile?.id);
-    const { data: report } = useMonthlyReport(selectedMonth);
-
-    const supabase = createClient();
-
-    const addAdvanceRequestMutation = useMutation({
-        mutationFn: async () => {
-            const { error } = await supabase.from("advance_requests").insert({
-                staff_id: profile!.id,
-                amount: Number(advanceAmount),
-                reason: advanceReason,
-                status: "pending",
-            });
-            if (error) throw error;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["advance_requests", profile?.id] });
-            setShowAdvanceModal(false);
-            setAdvanceAmount("");
-            setAdvanceReason("");
-            alert("Advance request submitted");
-        },
-    });
+    const {
+        data,
+        isLoading,
+        error,
+    } =
+        useStaffSalary(
+            selectedMonth
+        );
 
     const handleAdvanceRequest = async () => {
         setAdvanceLoading(true);
         try {
-            await addAdvanceRequestMutation.mutateAsync();
+            if (!data?.profile?.id) {
+                throw new Error(
+                    "Profile not loaded"
+                );
+            }
+
+            await addAdvanceRequestMutation
+                .mutateAsync({
+                    staffId:
+                        data.profile.id,
+                    amount:
+                        advanceAmount,
+                    reason:
+                        advanceReason,
+                });
+            setShowAdvanceModal(false);
+            setAdvanceAmount("");
+            setAdvanceReason("");
+            alert("Advance request submitted");
         } catch (error) {
             console.error(error);
             alert("Failed to submit advance request");
@@ -65,35 +58,24 @@ export default function StaffSalary() {
         }
     };
 
-    const stats = useMemo(() => {
-        const daysPresent = attendance.filter((a: any) => a.is_present).length;
-        const allowance = attendance.reduce(
-            (sum, item) => sum + Number(item.allowance_earned || 0),
-            0
-        );
-        const overtimeBonus = attendance.reduce(
-            (sum, item) => sum + Number(item.overtime_bonus || 0),
-            0
-        );
-        const advanceTotal = advances.reduce((sum, item) => sum + Number(item.amount), 0);
-        const salary = Number(profile?.salary || 0);
-        const profitBonus = report?.bonus_per_staff || 0;
-        const netSalary = salary + allowance + overtimeBonus + profitBonus - advanceTotal;
-
-        return {
-            daysPresent,
-            allowance,
-            overtimeBonus,
-            advanceTotal,
-            salary,
-            profitBonus,
-            netSalary,
-        };
-    }, [attendance, advances, profile?.salary, report]);
-
-    if (!profile) {
+    if (isLoading) {
         return <div className="p-6 text-white">Loading...</div>;
     }
+
+    if (error || !data) {
+        return (
+            <div className="p-6 text-white">
+                Failed to load salary
+            </div>
+        );
+    }
+
+    const stats =
+        data.stats;
+    const attendance =
+        data.attendance || [];
+    const advanceRequests =
+        data.advanceRequests || [];
 
     const prevMonth = format(subMonths(parseISO(`${selectedMonth}-01`), 1), "yyyy-MM");
     const nextMonth = format(addMonths(parseISO(`${selectedMonth}-01`), 1), "yyyy-MM");
@@ -199,7 +181,7 @@ export default function StaffSalary() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 mb-5">
                 <h2 className="text-xl font-semibold mb-5">Advance Requests</h2>
                 <div className="space-y-3">
-                    {advanceRequests.map((item) => (
+                    {advanceRequests.map((item: any) => (
                         <div key={item.id} className="bg-zinc-800 rounded-2xl p-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -235,7 +217,7 @@ export default function StaffSalary() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
                 <h2 className="text-xl font-semibold mb-5">Attendance History</h2>
                 <div className="space-y-3">
-                    {attendance.map((item) => (
+                    {attendance.map((item: any) => (
                         <div key={item.id} className="bg-zinc-800 rounded-2xl p-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -251,7 +233,7 @@ export default function StaffSalary() {
                                 </div>
                                 <div className="text-right">
                                     <p className="text-green-500 font-semibold">+₹{item.allowance_earned || 0}</p>
-                                    {item.overtime_bonus > 0 && (
+                                    {Number(item.overtime_bonus || 0) > 0 && (
                                         <p className="text-blue-400 text-xs mt-1">OT +₹{item.overtime_bonus}</p>
                                     )}
                                 </div>

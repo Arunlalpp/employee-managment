@@ -1,71 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-import { createClient } from "@/lib/supabase";
+import { useAdvanceRequestsWithProfiles } from "@/lib/hooks/useMonthAdvances";
+import { useUpdateAdvanceRequest }
+    from "@/lib/hooks/use-advance-mutations";
 
 export default function AdminAdvanceRequests() {
-    const [requests, setRequests] =
-        useState<any[]>([]);
+    const {
+        data: requests = [],
+        isLoading: loading,
+    } =
+        useAdvanceRequestsWithProfiles();
 
-    const [loading, setLoading] =
-        useState(true);
-
-    useEffect(() => {
-        fetchRequests();
-    }, []);
-
-    const fetchRequests = async () => {
-        try {
-            setLoading(true);
-
-            const supabase = createClient();
-
-            // GET REQUESTS
-            const { data: requestsData, error } =
-                await supabase
-                    .from("advance_requests")
-                    .select("*")
-                    .order("requested_at", {
-                        ascending: false,
-                    });
-
-            if (error) {
-                console.log(error);
-                return;
-            }
-
-            if (!requestsData || requestsData.length === 0) {
-                setRequests([]);
-                return;
-            }
-
-            // GET ALL STAFF IDS
-            const staffIds = requestsData.map(
-                (item) => item.staff_id
-            );
-
-            // GET PROFILES
-            const { data: profiles } =
-                await supabase
-                    .from("profiles")
-                    .select("id,name,email")
-                    .in("id", staffIds);
-
-            // MERGE DATA
-            const merged =
-                requestsData.map((item) => ({
-                    ...item,
-                    profile: profiles?.find(
-                        (p) => p.id === item.staff_id
-                    ),
-                }));
-
-            setRequests(merged);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const updateRequestMutation =
+        useUpdateAdvanceRequest();
 
     // APPROVE
     const approveRequest =
@@ -73,78 +20,17 @@ export default function AdminAdvanceRequests() {
             item: any
         ) => {
             try {
-                const supabase =
-                    createClient();
-
-                // UPDATE REQUEST
-                const {
-                    error:
-                    requestError,
-                } =
-                    await supabase
-                        .from(
-                            "advance_requests"
-                        )
-                        .update({
-                            status:
-                                "approved",
-
-                            approved_at:
-                                new Date().toISOString(),
-                        })
-                        .eq(
-                            "id",
-                            item.id
-                        );
-
-                if (
-                    requestError
-                ) {
-                    alert(
-                        requestError.message
-                    );
-
-                    return;
-                }
-
-                // INSERT INTO ADVANCES
-                const {
-                    error:
-                    advanceError,
-                } =
-                    await supabase
-                        .from(
-                            "advances"
-                        )
-                        .insert({
-                            staff_id:
-                                item.staff_id,
-
-                            amount:
-                                item.amount,
-
-                            reason:
-                                item.reason,
-
-                            date: new Date()
-                                .toISOString()
-                                .split(
-                                    "T"
-                                )[0],
-                        });
-
-                if (
-                    advanceError
-                ) {
-                    alert(
-                        advanceError.message
-                    );
-
-                    return;
-                }
-
-                fetchRequests();
+                await updateRequestMutation
+                    .mutateAsync({
+                        request:
+                            item,
+                        status:
+                            "approved",
+                    });
             } catch (error) {
+                alert(
+                    "Failed to approve request"
+                );
                 console.log(
                     error
                 );
@@ -157,33 +43,18 @@ export default function AdminAdvanceRequests() {
             id: string
         ) => {
             try {
-                const supabase =
-                    createClient();
-
-                const { error } =
-                    await supabase
-                        .from(
-                            "advance_requests"
-                        )
-                        .update({
-                            status:
-                                "rejected",
-                        })
-                        .eq(
-                            "id",
-                            id
-                        );
-
-                if (error) {
-                    alert(
-                        error.message
-                    );
-
-                    return;
-                }
-
-                fetchRequests();
+                await updateRequestMutation
+                    .mutateAsync({
+                        request: {
+                            id,
+                        },
+                        status:
+                            "rejected",
+                    });
             } catch (error) {
+                alert(
+                    "Failed to reject request"
+                );
                 console.log(
                     error
                 );
@@ -219,7 +90,7 @@ export default function AdminAdvanceRequests() {
                                     <h2 className="text-lg font-semibold">
                                         {
                                             item
-                                                ?.profiles
+                                                ?.profile
                                                 ?.name
                                         }
                                     </h2>
@@ -227,7 +98,7 @@ export default function AdminAdvanceRequests() {
                                     <p className="text-zinc-500 text-sm">
                                         {
                                             item
-                                                ?.profiles
+                                                ?.profile
                                                 ?.email
                                         }
                                     </p>

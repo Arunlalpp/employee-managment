@@ -1,84 +1,61 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { createServerSupabaseClient } from "@/lib/supabase-server";
-import ReportsChart from "@/components/reports-chart";
 import ReportsTabs from "@/components/reports-tabs";
+import { useReports } from "@/lib/hooks/use-reports";
 
-export default async function ReportsPage() {
-    const supabase =
-        await createServerSupabaseClient();
+export default function ReportsPage() {
 
-    // USER
     const {
-        data: { user },
-    } = await supabase.auth.getUser();
+        data,
+        isLoading,
+        error,
+    } =
+        useReports();
 
-    if (!user) {
-        redirect("/login");
+    if (isLoading) {
+        return (
+            <main className="p-6 max-w-md mx-auto pb-32">
+                <div className="space-y-4 animate-pulse">
+
+                    <div className="h-10 w-40 bg-zinc-800 rounded-xl" />
+
+                    <div className="h-40 bg-zinc-900 rounded-3xl" />
+
+                    <div className="h-96 bg-zinc-900 rounded-3xl" />
+
+                    <div className="h-32 bg-zinc-900 rounded-3xl" />
+
+                </div>
+            </main>
+        );
     }
 
-    // PROFILE
-    const { data: profile } =
-        await supabase
-            .from("profiles")
-            .select("*")
-            .eq("auth_id", user.id)
-            .single();
+    if (error || !data) {
+        return (
+            <main className="p-6 max-w-md mx-auto pb-32">
 
-    if (!profile) {
-        redirect("/login");
+                <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-5">
+
+                    <h2 className="text-red-400 text-xl font-semibold">
+                        Failed to load reports
+                    </h2>
+
+                    <p className="text-zinc-400 text-sm mt-2">
+                        Please try again later
+                    </p>
+
+                </div>
+
+            </main>
+        );
     }
 
-    if (profile.role !== "admin") {
-        redirect("/staff/dashboard");
-    }
-
-    // DATE
-    const currentDate = new Date();
-
-    const month =
-        currentDate.getMonth() + 1;
-
-    const year =
-        currentDate.getFullYear();
-
-    const startDate =
-        `${year}-${String(month).padStart(2, "0")}-01`;
-
-    const endDate =
-        `${year}-${String(month).padStart(2, "0")}-31`;
-
-    // REPORT
-    const { data: report } =
-        await supabase
-            .from("monthly_store_reports")
-            .select("*")
-            .eq("month", month)
-            .eq("year", year)
-            .single();
-
-    // STAFF
-    const { data: staff } =
-        await supabase
-            .from("profiles")
-            .select("*")
-            .eq("role", "staff");
-
-    // ATTENDANCE
-    const { data: attendance } =
-        await supabase
-            .from("attendance")
-            .select("*")
-            .gte("date", startDate)
-            .lte("date", endDate);
-
-    // ADVANCES
-    const { data: advances } =
-        await supabase
-            .from("advances")
-            .select("*")
-            .gte("date", startDate)
-            .lte("date", endDate);
+    const {
+        report,
+        staff,
+        attendance,
+        advances,
+    } = data;
 
     // VALUES
     const profitBonus =
@@ -92,7 +69,7 @@ export default async function ReportsPage() {
 
     const presentStaff =
         attendance?.filter(
-            (a) => a.is_present
+            (a: any) => a.is_present
         ).length || 0;
 
     const absentStaff =
@@ -112,25 +89,35 @@ export default async function ReportsPage() {
 
     // PAYROLL CHART
     const payrollData =
-        staff?.map((item) => {
+        staff?.map((item: any) => {
+
             const staffAttendance =
                 attendance?.filter(
-                    (a) =>
+                    (a: any) =>
                         a.staff_id === item.id
                 ) || [];
 
             const allowance =
                 staffAttendance.reduce(
-                    (sum, a) =>
+                    (
+                        sum: number,
+                        a: any
+                    ) =>
                         sum +
-                        (a.allowance_earned ||
-                            0),
+                        (
+                            a.allowance_earned ||
+                            0
+                        ),
                     0
                 );
 
             const overtimeBonus =
                 staffAttendance.reduce(
-                    (sum, a) => {
+                    (
+                        sum: number,
+                        a: any
+                    ) => {
+
                         if (
                             a.check_out &&
                             a.check_out >
@@ -146,28 +133,39 @@ export default async function ReportsPage() {
 
             const staffAdvances =
                 advances?.filter(
-                    (a) =>
+                    (a: any) =>
                         a.staff_id === item.id
                 ) || [];
 
             const advanceTotal =
                 staffAdvances.reduce(
-                    (sum, a) =>
+                    (
+                        sum: number,
+                        a: any
+                    ) =>
                         sum +
-                        Number(a.amount || 0),
+                        Number(
+                            a.amount || 0
+                        ),
                     0
                 );
 
             const netSalary =
-                Number(item.salary || 0) +
+                Number(
+                    item.salary || 0
+                ) +
                 allowance +
                 overtimeBonus +
                 profitBonus -
                 advanceTotal;
 
             return {
-                name: item.name,
-                salary: netSalary,
+                name:
+                    item.name ||
+                    "Unknown",
+
+                salary:
+                    netSalary,
             };
         }) || [];
 
@@ -191,47 +189,68 @@ export default async function ReportsPage() {
         },
         {
             month: "May",
-            payroll: payrollData.reduce(
-                (sum, item) =>
-                    sum + item.salary,
-                0
-            ),
+            payroll:
+                payrollData.reduce(
+                    (
+                        sum: number,
+                        item: any
+                    ) =>
+                        sum +
+                        item.salary,
+                    0
+                ),
         },
     ];
 
     // TOTAL PAYROLL
     const totalPayroll =
         payrollData.reduce(
-            (sum, item) =>
-                sum + item.salary,
+            (
+                sum: number,
+                item: any
+            ) =>
+                sum +
+                item.salary,
             0
         );
 
+    // DETAILED DATA
     const detailedData =
-        staff?.map((item) => {
+        staff?.map((item: any) => {
+
             const staffAttendance =
                 attendance?.filter(
-                    (a) =>
+                    (a: any) =>
                         a.staff_id === item.id
                 ) || [];
 
             const presentDays =
                 staffAttendance.filter(
-                    (a) => a.is_present
+                    (a: any) =>
+                        a.is_present
                 ).length;
 
             const allowance =
                 staffAttendance.reduce(
-                    (sum, a) =>
+                    (
+                        sum: number,
+                        a: any
+                    ) =>
                         sum +
-                        (a.allowance_earned ||
-                            0),
+                        (
+                            a.allowance_earned ||
+                            0
+                        ),
                     0
                 );
 
             const overtimeBonus =
                 staffAttendance.reduce(
-                    (sum, a) => {
+                    (
+                        sum: number,
+                        a: any
+                    ) => {
+
                         if (
                             a.check_out &&
                             a.check_out >
@@ -247,13 +266,16 @@ export default async function ReportsPage() {
 
             const staffAdvances =
                 advances?.filter(
-                    (a) =>
+                    (a: any) =>
                         a.staff_id === item.id
                 ) || [];
 
             const advanceTotal =
                 staffAdvances.reduce(
-                    (sum, a) =>
+                    (
+                        sum: number,
+                        a: any
+                    ) =>
                         sum +
                         Number(
                             a.amount || 0
@@ -275,25 +297,37 @@ export default async function ReportsPage() {
 
             return {
                 id: item.id,
-                name: item.name,
+
+                name:
+                    item.name ||
+                    "Unknown",
+
                 presentDays,
+
                 baseSalary,
+
                 allowance,
+
                 overtimeBonus,
+
                 profitBonus,
+
                 advanceTotal,
+
                 netSalary,
             };
         }) || [];
 
     return (
         <main className="p-6 max-w-md mx-auto pb-32">
+
             <h1 className="text-3xl font-bold text-white mb-6">
                 Reports
             </h1>
 
             {/* SUMMARY */}
             <div className="bg-zinc-900 rounded-3xl p-5 border border-yellow-500/20 mb-6">
+
                 <p className="text-zinc-400 text-sm">
                     Store Profit
                 </p>
@@ -304,7 +338,9 @@ export default async function ReportsPage() {
                 </h2>
 
                 <div className="grid grid-cols-2 gap-4 mt-5">
+
                     <div>
+
                         <p className="text-zinc-500 text-sm">
                             Staff
                         </p>
@@ -312,18 +348,24 @@ export default async function ReportsPage() {
                         <p className="text-white text-xl font-semibold">
                             {totalStaff}
                         </p>
+
                     </div>
 
                     <div>
+
                         <p className="text-zinc-500 text-sm">
                             Bonus
                         </p>
 
                         <p className="text-green-400 text-xl font-semibold">
-                            ₹{profitBonus}
+                            ₹
+                            {profitBonus}
                         </p>
+
                     </div>
+
                 </div>
+
             </div>
 
             {/* CHARTS */}
@@ -334,7 +376,9 @@ export default async function ReportsPage() {
                 payrollData={
                     payrollData
                 }
-                trendData={trendData}
+                trendData={
+                    trendData
+                }
                 detailedData={
                     detailedData
                 }
@@ -342,6 +386,7 @@ export default async function ReportsPage() {
 
             {/* TOTAL PAYROLL */}
             <div className="mt-6 bg-yellow-500/10 border border-yellow-500/20 rounded-3xl p-5">
+
                 <p className="text-yellow-500 text-sm">
                     TOTAL PAYROLL
                 </p>
@@ -350,7 +395,9 @@ export default async function ReportsPage() {
                     ₹
                     {totalPayroll.toLocaleString()}
                 </h2>
+
             </div>
+
         </main>
     );
 }

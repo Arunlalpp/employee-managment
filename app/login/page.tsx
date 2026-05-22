@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
+import { useLogin }
+    from "@/lib/hooks/use-login";
 import {
     Eye,
     EyeOff,
@@ -13,6 +14,8 @@ import {
 
 export default function LoginPage() {
     const router = useRouter();
+    const loginMutation =
+        useLogin();
 
     const [email, setEmail] =
         useState("");
@@ -38,55 +41,12 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const supabase =
-                createClient();
-
-            const {
-                data,
-                error: authError,
-            } =
-                await supabase.auth.signInWithPassword(
-                    {
+            const { profile } =
+                await loginMutation
+                    .mutateAsync({
                         email,
                         password,
-                    }
-                );
-
-            if (authError)
-                throw authError;
-
-            const user = data.user;
-
-            if (!user) {
-                throw new Error(
-                    "User not found"
-                );
-            }
-
-            // IMPORTANT FIX
-            const {
-                data: profile,
-                error: profileError,
-            } = await supabase
-                .from("profiles")
-                .select("*")
-                .eq(
-                    "auth_id",
-                    user.id
-                )
-                .single();
-
-            console.log(profile);
-            console.log(profileError);
-
-            if (
-                profileError ||
-                !profile
-            ) {
-                throw new Error(
-                    "Profile not found"
-                );
-            }
+                    });
 
             // ROLE BASED REDIRECT
             if (

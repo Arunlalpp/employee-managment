@@ -1,74 +1,51 @@
 "use client";
 
-import { useAuth } from "@/lib/hooks/useAuth";
-import { useProfile } from "@/lib/hooks/useProfile";
-import { useStaff } from "@/lib/hooks/useStaff";
-import { useAttendance } from "@/lib/hooks/useAttendance";
-import { useAdvances } from "@/lib/hooks/useAdvances";
-import { useDeductions } from "@/lib/hooks/useDeductions";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import {
   Users,
   IndianRupee,
   UserCheck,
   Wallet,
 } from "lucide-react";
+import { useDashboard } from "@/lib/hooks/use-dashboard";
 
 export function AdminDashboardContent() {
   const router = useRouter();
-  const { data: user, isLoading: userLoading } = useAuth();
-  const { data: profile, isLoading: profileLoading } = useProfile(user?.id);
-  const { data: staff = [] } = useStaff();
-
-  const today = new Date().toISOString().split("T")[0];
-  const { data: attendance = [] } = useAttendance(today);
-  const { data: advances = [] } = useAdvances();
-  const { data: deductions = [] } = useDeductions();
+  const {
+    data,
+    isLoading,
+    error,
+  } = useDashboard();
 
   useEffect(() => {
-    if (!userLoading && !user) {
+    if ((error as any)?.message === "Unauthorized") {
       router.push("/login");
       return;
     }
-    if (!profileLoading && profile && profile.role !== "admin") {
+
+    if ((error as any)?.message === "Forbidden") {
       router.push("/staff/dashboard");
     }
-  }, [user, profile, userLoading, profileLoading, router]);
+  }, [error, router]);
 
-  const stats = useMemo(() => {
-    const monthlySalary = staff.reduce((sum, item) => sum + (item.salary || 0), 0);
-    const totalAdvances = advances.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const totalDeductions = deductions.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const netPayroll = monthlySalary - totalAdvances - totalDeductions;
-    const absentToday = (staff?.length || 0) - (attendance?.length || 0);
-    const todayAllowance = (attendance?.length || 0) * 30;
-    const attendancePercentage = staff?.length
-      ? Math.round(((attendance?.length || 0) / staff.length) * 100)
-      : 0;
-    const highestSalaryStaff = [...(staff || [])].sort(
-      (a, b) => (b.salary || 0) - (a.salary || 0)
-    )[0];
-
-    return {
-      monthlySalary,
-      totalAdvances,
-      totalDeductions,
-      netPayroll,
-      absentToday,
-      todayAllowance,
-      attendancePercentage,
-      highestSalaryStaff,
-    };
-  }, [staff, attendance, advances, deductions]);
-
-  if (userLoading || profileLoading) {
+  if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  if (!user || !profile) {
-    return null;
+  if (error || !data) {
+    return (
+      <main className="min-h-screen bg-black text-white p-6">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-5">
+          Failed to load dashboard
+        </div>
+      </main>
+    );
   }
+
+  const staff = data.staff || [];
+  const attendance = data.attendance || [];
+  const stats = data.stats;
 
   return (
     <main className="min-h-screen bg-black text-white p-6">
@@ -173,7 +150,7 @@ export function AdminDashboardContent() {
         <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
           <h2 className="text-xl font-semibold mb-4">Staff Members</h2>
           <div className="space-y-3 max-h-56 overflow-y-auto">
-            {staff?.map((item) => (
+            {staff?.map((item: any) => (
               <div key={item.id} className="bg-zinc-800 rounded-2xl p-4">
                 <h3 className="font-semibold">{item.name}</h3>
                 <p className="text-zinc-400 text-sm">{item.email}</p>

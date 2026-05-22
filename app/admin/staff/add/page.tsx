@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { useRouter }
     from "next/navigation";
+import { useCreateStaff }
+    from "@/lib/hooks/use-admin-mutations";
 
 export default function CreateStaffPage() {
 
@@ -22,58 +24,33 @@ export default function CreateStaffPage() {
     const [salary, setSalary] =
         useState("");
 
-    const [loading, setLoading] =
-        useState(false);
+    const createStaffMutation =
+        useCreateStaff();
 
     const handleCreate =
         async () => {
 
             try {
-
-                setLoading(true);
-
-                const response =
-                    await fetch(
-                        "/api/admin/create-staff",
-                        {
-                            method: "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json",
-                            },
-
-                            body: JSON.stringify({
-                                name,
-                                email,
-                                password,
-                                salary:
-                                    Number(
-                                        salary
-                                    ),
-                            }),
-                        }
-                    );
-
-                const data =
-                    await response.json();
-
-                if (!response.ok) {
-                    alert(
-                        data.error
-                    );
-
-                    return;
-                }
+                await createStaffMutation
+                    .mutateAsync({
+                        name,
+                        email,
+                        password,
+                        salary:
+                            Number(
+                                salary
+                            ),
+                    });
 
                 router.push(
                     "/admin/staff"
                 );
 
-            } catch (error) {
-                console.log(error);
-            } finally {
-                setLoading(false);
+            } catch (error: any) {
+                alert(
+                    error.message ||
+                    "Failed to create staff"
+                );
             }
         };
 
@@ -134,10 +111,12 @@ export default function CreateStaffPage() {
 
                 <button
                     onClick={handleCreate}
-                    disabled={loading}
+                    disabled={
+                        createStaffMutation.isPending
+                    }
                     className="w-full bg-yellow-500 text-black font-semibold rounded-2xl py-4"
                 >
-                    {loading
+                    {createStaffMutation.isPending
                         ? "Creating..."
                         : "Create Staff"}
                 </button>
