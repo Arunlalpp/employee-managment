@@ -119,7 +119,7 @@ self.addEventListener(
                                     ) => {
 
                                         const cloned =
-                                            response.clone();
+                                            response.clone();  
 
                                         caches
                                             .open(
