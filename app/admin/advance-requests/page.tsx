@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useAdvanceRequestsWithProfiles } from "@/lib/hooks/useMonthAdvances";
 import { useUpdateAdvanceRequest }
     from "@/lib/hooks/use-advance-mutations";
@@ -27,9 +28,13 @@ export default function AdminAdvanceRequests() {
                         status:
                             "approved",
                     });
-            } catch (error) {
-                alert(
-                    "Failed to approve request"
+                toast.success(
+                    "Advance request approved"
+                );
+            } catch (error: any) {
+                toast.error(
+                    error?.message ||
+                        "Failed to approve request"
                 );
                 console.log(
                     error
@@ -51,9 +56,13 @@ export default function AdminAdvanceRequests() {
                         status:
                             "rejected",
                     });
-            } catch (error) {
-                alert(
-                    "Failed to reject request"
+                toast.error(
+                    "Advance request rejected"
+                );
+            } catch (error: any) {
+                toast.error(
+                    error?.message ||
+                        "Failed to reject request"
                 );
                 console.log(
                     error

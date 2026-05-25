@@ -27,7 +27,8 @@ export const useDeductions = (staffId?: string) => {
             if (error) throw error;
             return data || [];
         },
-        enabled: staffId ? true : true,
+        enabled:
+            !!staffId,
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
     });

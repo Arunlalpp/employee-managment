@@ -4,7 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
 import { Profile } from "./useProfile";
 
-export const useStaff = () => {
+export const useStaff = (
+    options?: {
+        enabled?: boolean;
+    }
+) => {
     const supabase = createClient();
 
     return useQuery<Profile[]>({
@@ -20,5 +24,7 @@ export const useStaff = () => {
         },
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
+        enabled:
+            options?.enabled ?? true,
     });
 };

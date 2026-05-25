@@ -13,6 +13,45 @@ interface AttendanceEntry {
 const datePattern =
     /^\d{4}-\d{2}-\d{2}$/;
 
+const DAILY_ALLOWANCE = 40;
+
+function formatLocalTime(
+    value?: string | null
+) {
+    if (!value) {
+        return null;
+    }
+
+    const parts =
+        new Intl.DateTimeFormat(
+            "en-GB",
+            {
+                timeZone:
+                    "Asia/Kolkata",
+                hour:
+                    "2-digit",
+                minute:
+                    "2-digit",
+                second:
+                    "2-digit",
+                hour12:
+                    false,
+            }
+        ).formatToParts(
+            new Date(value)
+        );
+
+    const values =
+        Object.fromEntries(
+            parts.map((part) => [
+                part.type,
+                part.value,
+            ])
+        );
+
+    return `${values.hour}:${values.minute}:${values.second}`;
+}
+
 function createAdminClient() {
     return createClient(
         process.env
@@ -110,6 +149,7 @@ export async function GET(
         const [
             { data: staff },
             { data: attendance },
+            { data: sessions },
         ] = await Promise.all([
             auth.adminClient
                 .from("profiles")
@@ -124,12 +164,100 @@ export async function GET(
                 .from("attendance")
                 .select("*")
                 .eq("date", date),
+
+            auth.adminClient
+                .from(
+                    "attendance_sessions"
+                )
+                .select("*")
+                .eq(
+                    "attendance_date",
+                    date
+                )
+                .order(
+                    "start_time",
+                    {
+                        ascending: true,
+                    }
+                ),
         ]);
+
+        const attendanceMap =
+            new Map(
+                (attendance || []).map(
+                    (item) => [
+                        item.staff_id,
+                        {
+                            ...item,
+                        },
+                    ]
+                )
+            );
+
+        for (const session of sessions || []) {
+            const existing =
+                attendanceMap.get(
+                    session.staff_id
+                );
+            const checkIn =
+                formatLocalTime(
+                    session.start_time
+                );
+            const checkOut =
+                formatLocalTime(
+                    session.end_time
+                );
+
+            if (existing) {
+                attendanceMap.set(
+                    session.staff_id,
+                    {
+                        ...existing,
+                        is_present:
+                            true,
+                        check_in:
+                            existing.check_in ||
+                            checkIn,
+                        check_out:
+                            existing.check_out ||
+                            checkOut,
+                        allowance_earned:
+                            Number(
+                                existing.allowance_earned ||
+                                    0
+                            ) ||
+                            DAILY_ALLOWANCE,
+                    }
+                );
+                continue;
+            }
+
+            attendanceMap.set(
+                session.staff_id,
+                {
+                    id:
+                        `session-${session.staff_id}-${date}`,
+                    staff_id:
+                        session.staff_id,
+                    date,
+                    is_present:
+                        true,
+                    check_in:
+                        checkIn,
+                    check_out:
+                        checkOut,
+                    allowance_earned:
+                        DAILY_ALLOWANCE,
+                }
+            );
+        }
 
         return NextResponse.json({
             staff: staff || [],
             attendance:
-                attendance || [],
+                Array.from(
+                    attendanceMap.values()
+                ),
         });
     } catch (error) {
         console.log(error);
@@ -170,11 +298,13 @@ export async function POST(
                     entry.is_present,
                 check_in:
                     entry.is_present
-                        ? entry.check_in
+                        ? entry.check_in ||
+                          null
                         : null,
                 check_out:
                     entry.is_present
-                        ? entry.check_out
+                        ? entry.check_out ||
+                          null
                         : null,
                 allowance_earned:
                     entry.is_present

@@ -32,10 +32,43 @@ export default function LoginPage() {
     const [error, setError] =
         useState("");
 
-    const handleLogin = async (
-        e: React.FormEvent
-    ) => {
-        e.preventDefault();
+    const validateForm = () => {
+        const trimmedEmail =
+            email.trim();
+
+        if (!trimmedEmail) {
+            return "Email is required.";
+        }
+
+        if (
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                trimmedEmail
+            )
+        ) {
+            return "Enter a valid email address.";
+        }
+
+        if (!password) {
+            return "Password is required.";
+        }
+
+        if (password.length < 6) {
+            return "Password must be at least 6 characters.";
+        }
+
+        return "";
+    };
+
+    const handleLogin = async () => {
+        const validationError =
+            validateForm();
+
+        if (validationError) {
+            setError(
+                validationError
+            );
+            return;
+        }
 
         setLoading(true);
         setError("");
@@ -44,7 +77,8 @@ export default function LoginPage() {
             const { profile } =
                 await loginMutation
                     .mutateAsync({
-                        email,
+                        email:
+                            email.trim(),
                         password,
                     });
 
@@ -137,8 +171,8 @@ export default function LoginPage() {
                     )}
 
                     <form
-                        onSubmit={
-                            handleLogin
+                        onSubmit={(e) =>
+                            e.preventDefault()
                         }
                         className="space-y-4"
                     >
@@ -158,14 +192,14 @@ export default function LoginPage() {
                                     }
                                     onChange={(
                                         e
-                                    ) =>
+                                    ) => {
+                                        setError("");
                                         setEmail(
                                             e
                                                 .target
                                                 .value
-                                        )
-                                    }
-                                    required
+                                        );
+                                    }}
                                     placeholder="you@example.com"
                                     className="w-full bg-surface border border-border rounded-xl pl-10 pr-4 py-3.5 text-ink-primary text-sm placeholder:text-ink-muted transition-all"
                                 />
@@ -192,14 +226,14 @@ export default function LoginPage() {
                                     }
                                     onChange={(
                                         e
-                                    ) =>
+                                    ) => {
+                                        setError("");
                                         setPassword(
                                             e
                                                 .target
                                                 .value
-                                        )
-                                    }
-                                    required
+                                        );
+                                    }}
                                     placeholder="••••••••"
                                     className="w-full bg-surface border border-border rounded-xl pl-10 pr-11 py-3.5 text-ink-primary text-sm placeholder:text-ink-muted transition-all"
                                 />
@@ -224,7 +258,10 @@ export default function LoginPage() {
 
                         {/* Submit */}
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={
+                                handleLogin
+                            }
                             disabled={
                                 loading
                             }

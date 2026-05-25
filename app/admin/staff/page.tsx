@@ -6,6 +6,8 @@ import { useStaff } from "@/lib/hooks/useStaff";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
+import { Plus }
+    from "lucide-react";
 
 export default function StaffPage() {
     const router = useRouter();
@@ -36,15 +38,9 @@ export default function StaffPage() {
     }
 
     return (
-        <main className="px-4 py-6">
-            <div className="flex items-center justify-between mb-6">
+        <main className="px-4 py-6 pb-28">
+            <div className="mb-6">
                 <h1 className="text-3xl font-bold text-white">Staff Members</h1>
-                <Link
-                    href="/admin/staff/add"
-                    className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-semibold"
-                >
-                    + Add Staff
-                </Link>
             </div>
 
             {staffList.length === 0 ? (
@@ -78,6 +74,14 @@ export default function StaffPage() {
                     ))}
                 </div>
             )}
+
+            <Link
+                href="/admin/staff/add"
+                className="fixed right-5 bottom-24 z-20 h-14 w-14 rounded-full bg-yellow-500 text-black shadow-2xl flex items-center justify-center hover:bg-yellow-400 transition"
+                aria-label="Add staff"
+            >
+                <Plus className="w-6 h-6" />
+            </Link>
         </main>
     );
 }

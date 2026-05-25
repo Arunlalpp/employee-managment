@@ -1,6 +1,10 @@
 export async function getDashboardData() {
     const response = await fetch(
-        "/api/admin/dashboard"
+        "/api/admin/dashboard",
+        {
+            cache:
+                "no-store",
+        }
     );
 
     const result = await response.json();

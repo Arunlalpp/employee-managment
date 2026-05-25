@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useParams }
+import {
+    useParams,
+    useSearchParams,
+}
     from "next/navigation";
+import { ArrowLeft }
+    from "lucide-react";
 import { useStaffDetails }
     from "@/lib/hooks/use-staff-details";
 
@@ -11,6 +16,13 @@ export default function StaffDetailsPage() {
         useParams<{
             id: string;
         }>();
+    const searchParams =
+        useSearchParams();
+    const backHref =
+        searchParams.get("from") ===
+            "attendance-staff"
+            ? "/admin/attendance?tab=staff"
+            : "/admin/staff";
 
     const {
         data,
@@ -59,9 +71,10 @@ export default function StaffDetailsPage() {
                 </div>
 
                 <Link
-                    href="/admin/staff"
-                    className="bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-xl"
+                    href={backHref}
+                    className="bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-xl flex items-center gap-2"
                 >
+                    <ArrowLeft className="w-4 h-4" />
                     Back
                 </Link>
             </div>

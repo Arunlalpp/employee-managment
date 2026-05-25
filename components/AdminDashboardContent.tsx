@@ -4,14 +4,17 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
   Users,
-  IndianRupee,
   UserCheck,
   Wallet,
+  LogOut,
 } from "lucide-react";
 import { useDashboard } from "@/lib/hooks/use-dashboard";
+import { createClient } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function AdminDashboardContent() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const {
     data,
     isLoading,
@@ -29,6 +32,14 @@ export function AdminDashboardContent() {
     }
   }, [error, router]);
 
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    queryClient.clear();
+    router.push("/login");
+    router.refresh();
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -44,17 +55,16 @@ export function AdminDashboardContent() {
   }
 
   const staff = data.staff || [];
-  const attendance = data.attendance || [];
   const stats = data.stats;
 
   return (
-    <main className="min-h-screen bg-black text-white p-6">
+    <main className="min-h-screen bg-black text-white p-6 pb-40">
       <div className="mb-8">
         <h1 className="text-4xl font-bold">Admin Dashboard</h1>
         <p className="text-zinc-400 mt-2">Employee management overview</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
           <div className="flex items-center justify-between">
             <div>
@@ -68,97 +78,59 @@ export function AdminDashboardContent() {
         </div>
 
         <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-zinc-400 text-sm">Present Today</p>
-              <h2 className="text-3xl font-bold mt-2">{attendance?.length || 0}</h2>
+          <p className="text-zinc-400 text-sm mb-6">Attendance</p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <UserCheck size={24} className="text-green-400" />
+                <span>Present Today</span>
+              </div>
+              <h3 className="text-2xl font-bold">{stats.presentToday}</h3>
             </div>
-            <div className="bg-zinc-800 p-3 rounded-2xl">
-              <UserCheck size={28} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-zinc-400 text-sm">Monthly Salary</p>
-              <h2 className="text-3xl font-bold mt-2">₹{stats.monthlySalary.toLocaleString()}</h2>
-            </div>
-            <div className="bg-zinc-800 p-3 rounded-2xl">
-              <IndianRupee size={28} />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-red-400">●</span>
+                <span>Absent Today</span>
+              </div>
+              <h3 className="text-2xl font-bold text-red-400">{stats.absentToday}</h3>
             </div>
           </div>
         </div>
 
         <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-zinc-400 text-sm">Advances</p>
-              <h2 className="text-3xl font-bold mt-2">₹{stats.totalAdvances.toLocaleString()}</h2>
+          <p className="text-zinc-400 text-sm mb-6">Salary Information</p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Wallet size={24} className="text-yellow-400" />
+                <span>Monthly Salary</span>
+              </div>
+              <h3 className="text-xl font-bold">₹{stats.monthlySalary.toLocaleString()}</h3>
             </div>
-            <div className="bg-zinc-800 p-3 rounded-2xl">
-              <Wallet size={28} />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Wallet size={24} className="text-blue-400" />
+                <span>Advances</span>
+              </div>
+              <h3 className="text-xl font-bold">₹{stats.totalAdvances.toLocaleString()}</h3>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
         <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
           <p className="text-zinc-400 text-sm">Net Payroll</p>
-          <h2 className="text-3xl font-bold mt-2 text-green-400">₹{stats.netPayroll.toLocaleString()}</h2>
-        </div>
-
-        <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-          <p className="text-zinc-400 text-sm">Absent Today</p>
-          <h2 className="text-3xl font-bold mt-2 text-red-400">{stats.absentToday}</h2>
-        </div>
-
-        <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-          <p className="text-zinc-400 text-sm">Today's Allowance</p>
-          <h2 className="text-3xl font-bold mt-2 text-yellow-400">₹{stats.todayAllowance}</h2>
-        </div>
-
-        <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-          <p className="text-zinc-400 text-sm">Highest Salary</p>
-          <h2 className="text-2xl font-bold mt-2">{stats.highestSalaryStaff?.name}</h2>
-          <p className="text-yellow-400 mt-2">₹{stats.highestSalaryStaff?.salary}</p>
+          <h2 className="text-3xl font-bold mt-4 text-green-400">₹{stats.netPayroll.toLocaleString()}</h2>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-          <h2 className="text-xl font-semibold mb-4">Attendance Rate</h2>
-          <div className="flex items-center justify-center h-52">
-            <div className="relative w-40 h-40 rounded-full border-[12px] border-zinc-800 flex items-center justify-center">
-              <div className="text-center">
-                <h2 className="text-4xl font-bold">{stats.attendancePercentage}%</h2>
-                <p className="text-zinc-400 text-sm mt-1">Present</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-          <h2 className="text-xl font-semibold mb-4">Total Deductions</h2>
-          <div className="h-52 flex items-center justify-center">
-            <h1 className="text-5xl font-bold text-red-500">₹{stats.totalDeductions.toLocaleString()}</h1>
-          </div>
-        </div>
-
-        <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-          <h2 className="text-xl font-semibold mb-4">Staff Members</h2>
-          <div className="space-y-3 max-h-56 overflow-y-auto">
-            {staff?.map((item: any) => (
-              <div key={item.id} className="bg-zinc-800 rounded-2xl p-4">
-                <h3 className="font-semibold">{item.name}</h3>
-                <p className="text-zinc-400 text-sm">{item.email}</p>
-                <p className="text-yellow-400 mt-2">₹{item.salary}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="mt-12 mb-6">
+        <button
+          onClick={handleLogout}
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+        >
+          <LogOut size={20} />
+          Logout
+        </button>
       </div>
     </main>
   );

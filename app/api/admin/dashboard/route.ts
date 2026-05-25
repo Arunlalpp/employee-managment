@@ -57,6 +57,35 @@ async function requireAdmin() {
     };
 }
 
+function getLocalDate() {
+    const parts =
+        new Intl.DateTimeFormat(
+            "en-CA",
+            {
+                timeZone:
+                    "Asia/Kolkata",
+                year:
+                    "numeric",
+                month:
+                    "2-digit",
+                day:
+                    "2-digit",
+            }
+        ).formatToParts(
+            new Date()
+        );
+
+    const values =
+        Object.fromEntries(
+            parts.map((part) => [
+                part.type,
+                part.value,
+            ])
+        );
+
+    return `${values.year}-${values.month}-${values.day}`;
+}
+
 export async function GET() {
     try {
         const auth =
@@ -67,20 +96,23 @@ export async function GET() {
         }
 
         const today =
-            new Date()
-                .toISOString()
-                .split("T")[0];
+            getLocalDate();
 
         const [
             staffRes,
             attendanceRes,
+            statusRes,
             advancesRes,
             deductionsRes,
         ] = await Promise.all([
             auth.supabase
                 .from("profiles")
                 .select("*")
-                .eq("role", "staff"),
+                .eq("role", "staff")
+                .eq(
+                    "is_active",
+                    true
+                ),
 
             auth.supabase
                 .from("attendance")
@@ -89,6 +121,21 @@ export async function GET() {
                 .eq(
                     "is_present",
                     true
+                ),
+
+            auth.supabase
+                .from(
+                    "staff_attendance_status"
+                )
+                .select(
+                    "staff_id,current_status"
+                )
+                .in(
+                    "current_status",
+                    [
+                        "active",
+                        "break",
+                    ]
                 ),
 
             auth.supabase
@@ -103,6 +150,7 @@ export async function GET() {
         if (
             staffRes.error ||
             attendanceRes.error ||
+            statusRes.error ||
             advancesRes.error ||
             deductionsRes.error
         ) {
@@ -111,6 +159,7 @@ export async function GET() {
                     error:
                         staffRes.error?.message ||
                         attendanceRes.error?.message ||
+                        statusRes.error?.message ||
                         advancesRes.error?.message ||
                         deductionsRes.error?.message,
                 },
@@ -125,6 +174,9 @@ export async function GET() {
 
         const attendance =
             attendanceRes.data || [];
+
+        const statuses =
+            statusRes.data || [];
 
         const advances =
             advancesRes.data || [];
@@ -162,8 +214,47 @@ export async function GET() {
                 0
             );
 
+        const staffIds =
+            new Set(
+                staff.map(
+                    (item) =>
+                        item.id
+                )
+            );
+
+        const presentStaffIds =
+            new Set<string>();
+
+        attendance.forEach(
+            (item) => {
+                if (
+                    staffIds.has(
+                        item.staff_id
+                    )
+                ) {
+                    presentStaffIds.add(
+                        item.staff_id
+                    );
+                }
+            }
+        );
+
+        statuses.forEach(
+            (item) => {
+                if (
+                    staffIds.has(
+                        item.staff_id
+                    )
+                ) {
+                    presentStaffIds.add(
+                        item.staff_id
+                    );
+                }
+            }
+        );
+
         const presentToday =
-            attendance.length;
+            presentStaffIds.size;
 
         const absentToday =
             staff.length -
@@ -195,7 +286,7 @@ export async function GET() {
                 absentToday,
                 presentToday,
                 todayAllowance:
-                    presentToday * 30,
+                    presentToday * 40,
                 attendancePercentage:
                     staff.length
                         ? Math.round(

@@ -1,29 +1,19 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Users,
   Clock3,
   Wallet,
   BarChart3,
-  LogOut,
-  WalletCards,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
 
 const navItems = [
   {
     href: "/admin/dashboard",
     icon: LayoutDashboard,
     label: "Home",
-  },
-  {
-    href: "/admin/staff",
-    icon: Users,
-    label: "Staff",
   },
   {
     href: "/admin/attendance",
@@ -40,25 +30,10 @@ const navItems = [
     icon: BarChart3,
     label: "Reports",
   },
-  {
-    href: "/admin/advance-requests",
-    icon: WalletCards,
-    label: "Requests",
-  },
 ];
 
 export default function AdminNav() {
   const pathname = usePathname();
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
-  const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    queryClient.clear();
-    router.push("/login");
-    router.refresh();
-  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border bottom-nav">
@@ -91,17 +66,6 @@ export default function AdminNav() {
             </Link>
           );
         })}
-
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-ink-muted hover:text-danger transition-all min-w-[56px]"
-        >
-          <div className="p-1.5 rounded-lg">
-            <LogOut className="w-5 h-5" strokeWidth={1.8} />
-          </div>
-          <span className="text-[10px] font-medium tracking-wide">Logout</span>
-        </button>
       </div>
     </nav>
   );

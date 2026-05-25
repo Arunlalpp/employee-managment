@@ -7,19 +7,64 @@ import {
 import { createClient }
     from "@/lib/supabase";
 
-const ADVANCE_LIMIT_PERCENT =
-    0.1;
+const MAX_MONTHLY_ADVANCE_PERCENT =
+    1;
+
+function getCurrentMonthRange() {
+    const now =
+        new Date();
+    const year =
+        now.getFullYear();
+    const month =
+        now.getMonth();
+    const monthNumber =
+        String(month + 1).padStart(
+            2,
+            "0"
+        );
+    const daysInMonth =
+        new Date(
+            year,
+            month + 1,
+            0
+        ).getDate();
+
+    return {
+        monthStart:
+            `${year}-${monthNumber}-01`,
+        monthEnd:
+            `${year}-${monthNumber}-${String(
+                daysInMonth
+            ).padStart(2, "0")}`,
+        daysInMonth,
+    };
+}
+
+function sumAmounts(
+    rows: { amount?: number | string }[] = []
+) {
+    return rows.reduce(
+        (sum, item) =>
+            sum +
+            Number(
+                item.amount || 0
+            ),
+        0
+    );
+}
 
 async function validateAdvanceAmount({
     supabase,
     staffId,
     amount,
+    excludeRequestId,
 }: {
     supabase: ReturnType<
         typeof createClient
     >;
     staffId: string;
     amount: number | string;
+    excludeRequestId?: string;
 }) {
     const advanceAmount =
         Number(amount);
@@ -56,10 +101,132 @@ async function validateAdvanceAmount({
                 0
         );
 
-    const maxAdvance =
+    const {
+        monthStart,
+        monthEnd,
+    } =
+        getCurrentMonthRange();
+
+    const [
+        attendanceRes,
+        advancesRes,
+        requestsRes,
+    ] =
+        await Promise.all([
+            supabase
+                .from("attendance")
+                .select(
+                    "is_present,allowance_earned,overtime_bonus"
+                )
+                .eq(
+                    "staff_id",
+                    staffId
+                )
+                .gte(
+                    "date",
+                    monthStart
+                )
+                .lte(
+                    "date",
+                    monthEnd
+                ),
+
+            supabase
+                .from("advances")
+                .select("amount")
+                .eq(
+                    "staff_id",
+                    staffId
+                )
+                .gte(
+                    "date",
+                    monthStart
+                )
+                .lte(
+                    "date",
+                    monthEnd
+                ),
+
+            supabase
+                .from(
+                    "advance_requests"
+                )
+                .select(
+                    "id,amount,status,requested_at"
+                )
+                .eq(
+                    "staff_id",
+                    staffId
+                )
+                .eq(
+                    "status",
+                    "pending"
+                )
+                .gte(
+                    "requested_at",
+                    `${monthStart}T00:00:00`
+                )
+                .lte(
+                    "requested_at",
+                    `${monthEnd}T23:59:59`
+                ),
+        ]);
+
+    if (
+        attendanceRes.error ||
+        advancesRes.error ||
+        requestsRes.error
+    ) {
+        throw new Error(
+            attendanceRes.error?.message ||
+                advancesRes.error?.message ||
+                requestsRes.error?.message ||
+                "Failed to calculate advance limit"
+        );
+    }
+
+    const attendance =
+        attendanceRes.data || [];
+    const earnedAdditions =
+        attendance.reduce(
+            (sum, item) =>
+                sum +
+                Number(
+                    item.allowance_earned ||
+                        0
+                ) +
+                Number(
+                    item.overtime_bonus ||
+                        0
+                ),
+            0
+        );
+    const monthlyPayable =
         Math.floor(
-            salary *
-                ADVANCE_LIMIT_PERCENT
+            (salary +
+                earnedAdditions) *
+                MAX_MONTHLY_ADVANCE_PERCENT
+        );
+    const approvedAdvanceTotal =
+        sumAmounts(
+            advancesRes.data || []
+        );
+    const pendingRequestTotal =
+        sumAmounts(
+            (requestsRes.data || []).filter(
+                (request) =>
+                    request.id !==
+                    excludeRequestId
+            )
+        );
+    const maxAdvance =
+        Math.max(
+            0,
+            Math.floor(
+                monthlyPayable -
+                    approvedAdvanceTotal -
+                    pendingRequestTotal
+            )
         );
 
     if (
@@ -86,16 +253,19 @@ export function useAddAdvance() {
             staffId,
             amount,
             reason,
+            excludeRequestId,
         }: {
             staffId: string;
             amount: number | string;
             reason?: string;
+            excludeRequestId?: string;
         }) => {
             const advanceAmount =
                 await validateAdvanceAmount({
                     supabase,
                     staffId,
                     amount,
+                    excludeRequestId,
                 });
 
             const { error } =
@@ -223,6 +393,8 @@ export function useUpdateAdvanceRequest() {
                         request.amount,
                     reason:
                         request.reason,
+                    excludeRequestId:
+                        request.id,
                 });
             }
 

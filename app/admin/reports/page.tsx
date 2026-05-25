@@ -1,9 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import ReportsTabs from "@/components/reports-tabs";
 import { useReports } from "@/lib/hooks/use-reports";
+import GlobalSearchFilter from "@/components/GlobalSearchFilter";
+
+interface SearchFilters {
+    employeeName: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+}
 
 export default function ReportsPage() {
+
+    const [searchFilters, setSearchFilters] = useState<SearchFilters>({
+        employeeName: "",
+        status: "",
+        startDate: "",
+        endDate: "",
+    });
 
     const {
         data,
@@ -324,6 +340,8 @@ export default function ReportsPage() {
             <h1 className="text-3xl font-bold text-white mb-6">
                 Reports
             </h1>
+
+            <GlobalSearchFilter onFilterChange={setSearchFilters} />
 
             {/* SUMMARY */}
             <div className="bg-zinc-900 rounded-3xl p-5 border border-yellow-500/20 mb-6">

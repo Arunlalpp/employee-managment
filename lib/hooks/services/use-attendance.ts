@@ -6,10 +6,20 @@ import { useMemo }
 import { useQuery }
     from "@tanstack/react-query";
 import { AttendanceEntry, getAttendanceData } from "./attendance.service";
+import { getCurrentDate }
+    from "@/lib/utils";
 
 export function useAttendance(
-    selectedDate: string
+    selectedDate: string,
+    options?: {
+        enabled?: boolean;
+    }
 ) {
+    const enabled =
+        options?.enabled ?? true;
+    const isToday =
+        selectedDate ===
+        getCurrentDate();
 
     const query =
         useQuery({
@@ -24,10 +34,19 @@ export function useAttendance(
                 ),
 
             staleTime:
-                1000 * 60 * 5,
+                isToday
+                    ? 1000 * 30
+                    : 5 * 60 * 1000,
 
             refetchOnWindowFocus:
-                false,
+                enabled && isToday,
+
+            refetchInterval:
+                enabled && isToday
+                    ? 1000 * 30
+                    : false,
+
+            enabled,
         });
 
     const attendanceMap =
@@ -69,13 +88,13 @@ export function useAttendance(
                         rec?.check_in?.slice(
                             0,
                             5
-                        ) ?? "09:30",
+                        ) ?? "",
 
                     check_out:
                         rec?.check_out?.slice(
                             0,
                             5
-                        ) ?? "22:30",
+                        ) ?? "",
 
                     allowance_earned:
                         rec?.allowance_earned ??

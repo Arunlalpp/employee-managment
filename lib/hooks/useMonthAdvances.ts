@@ -71,7 +71,11 @@ export const useAdvanceRequests = (staffId?: string) => {
     });
 };
 
-export const useAdvanceRequestsWithProfiles = () => {
+export const useAdvanceRequestsWithProfiles = (
+    options?: {
+        enabled?: boolean;
+    }
+) => {
     const supabase = createClient();
 
     return useQuery<AdvanceRequest[]>({
@@ -106,5 +110,7 @@ export const useAdvanceRequestsWithProfiles = () => {
         },
         staleTime: 2 * 60 * 1000,
         gcTime: 5 * 60 * 1000,
+        enabled:
+            options?.enabled ?? true,
     });
 };

@@ -119,7 +119,7 @@ export default function StaffDashboard() {
         const monthPresent = monthAttendance.filter(
             (a: any) => a.is_present
         ).length;
-        const totalAllowance = monthPresent * 30;
+        const totalAllowance = monthPresent * 40;
         const totalAdvances = monthAdvances.reduce(
             (sum, item) => sum + Number(item.amount),
             0
@@ -179,7 +179,7 @@ export default function StaffDashboard() {
                         <p className="text-sm text-zinc-400">
                             Daily allowance:
                             {stats.isPresent
-                                ? " ₹30"
+                                ? " ₹40"
                                 : " ₹0"}
                         </p>
                     </div>

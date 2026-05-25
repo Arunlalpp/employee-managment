@@ -2,22 +2,20 @@
 
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useProfile } from "@/lib/hooks/useProfile";
-import { useStaff } from "@/lib/hooks/useStaff";
-import { useAttendance, useStaffAttendance } from "@/lib/hooks/useAttendance";
+import { useStaffAttendance } from "@/lib/hooks/useAttendance";
 import { useDeductions } from "@/lib/hooks/useDeductions";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import StaffDashboardUI from "./StaffDashboardUI";
-import Link from "next/link";
+import { getCurrentDate } from "@/lib/utils";
 
 export function StaffDashboardContent() {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile(user?.id);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getCurrentDate();
   const { data: attendance } = useStaffAttendance(profile?.id || "", today);
-  const { data: totalStaffData = [] } = useStaff();
   const { data: deductions = [] } = useDeductions(profile?.id);
 
   useEffect(() => {
@@ -29,11 +27,11 @@ export function StaffDashboardContent() {
   const stats = useMemo(() => {
     const totalDeduction = deductions?.reduce((sum, item) => sum + item.amount, 0) || 0;
     return {
-      totalStaff: totalStaffData?.length || 0,
-      presentToday: totalStaffData?.filter(s => s.id === profile?.id)?.length || 0,
+      totalStaff: 1,
+      presentToday: attendance?.is_present ? 1 : 0,
       totalDeduction,
     };
-  }, [deductions, totalStaffData, profile?.id]);
+  }, [attendance?.is_present, deductions]);
 
   if (userLoading || profileLoading || !user || !profile) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -46,13 +44,6 @@ export function StaffDashboardContent() {
         attendance={attendance}
         stats={stats}
       />
-      <Link
-        href="/admin/staff/add"
-        className="fixed bottom-28 right-5 z-50 bg-yellow-500 text-black shadow-2xl rounded-full px-5 py-4 font-semibold flex items-center gap-2 active:scale-95 transition-all"
-      >
-        <span className="text-2xl leading-none">+</span>
-        Add Staff
-      </Link>
     </main>
   );
 }

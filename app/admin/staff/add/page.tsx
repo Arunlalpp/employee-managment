@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
-import { useRouter }
+import {
+    useRouter,
+    useSearchParams,
+}
     from "next/navigation";
+import { ArrowLeft }
+    from "lucide-react";
+import { toast } from "sonner";
 import { useCreateStaff }
     from "@/lib/hooks/use-admin-mutations";
 
@@ -11,6 +18,13 @@ export default function CreateStaffPage() {
 
     const router =
         useRouter();
+    const searchParams =
+        useSearchParams();
+    const backHref =
+        searchParams.get("from") ===
+            "attendance-staff"
+            ? "/admin/attendance?tab=staff"
+            : "/admin/staff";
 
     const [name, setName] =
         useState("");
@@ -43,13 +57,16 @@ export default function CreateStaffPage() {
                     });
 
                 router.push(
-                    "/admin/staff"
+                    backHref
+                );
+                toast.success(
+                    "Staff created"
                 );
 
             } catch (error: any) {
-                alert(
-                    error.message ||
-                    "Failed to create staff"
+                toast.error(
+                    error?.message ||
+                        "Failed to create staff"
                 );
             }
         };
@@ -57,9 +74,19 @@ export default function CreateStaffPage() {
     return (
         <main className="px-4 pt-14 pb-32 text-white">
 
-            <h1 className="text-3xl font-bold mb-6">
-                Create Staff
-            </h1>
+            <div className="flex items-center justify-between gap-4 mb-6">
+                <h1 className="text-3xl font-bold">
+                    Create Staff
+                </h1>
+
+                <Link
+                    href={backHref}
+                    className="bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-xl flex items-center gap-2"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back
+                </Link>
+            </div>
 
             <div className="space-y-4">
 

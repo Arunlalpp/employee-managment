@@ -13,8 +13,10 @@ export function useDashboard() {
         queryFn:
             getDashboardData,
         staleTime:
-            1000 * 60 * 5,
+            1000 * 30,
         refetchOnWindowFocus:
-            false,
+            true,
+        refetchInterval:
+            1000 * 30,
     });
 }

@@ -17,6 +17,7 @@ import {
     TrendingDown,
     IndianRupee,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { useSalary } from "@/lib/hooks/use-salary";
 import { useAddAdvance }
@@ -157,17 +158,21 @@ export default function AdminSalaryPage() {
                     amount: "",
                     reason: "",
                 });
+                toast.success(
+                    "Advance added"
+                );
 
             } catch (
-            error
+            error: any
             ) {
 
                 console.error(
                     error
                 );
 
-                alert(
-                    "Failed to add advance"
+                toast.error(
+                    error?.message ||
+                        "Failed to add advance"
                 );
 
             } finally {
@@ -385,7 +390,7 @@ export default function AdminSalaryPage() {
                                         />
 
                                         <SalaryRow
-                                            label={`Allowance (${staff.daysPresent} × ₹30)`}
+                                            label={`Allowance (${staff.daysPresent} × ₹40)`}
                                             value={`+${formatCurrency(
                                                 staff.allowance
                                             )}`}

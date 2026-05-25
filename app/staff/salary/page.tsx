@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { addMonths, format, parseISO, subMonths } from "date-fns";
 import { TrendingDown, CalendarDays, Trophy, Clock3 } from "lucide-react";
+import { toast } from "sonner";
 
 import { useAddAdvanceRequest }
     from "@/lib/hooks/use-advance-mutations";
@@ -49,10 +50,15 @@ export default function StaffSalary() {
             setShowAdvanceModal(false);
             setAdvanceAmount("");
             setAdvanceReason("");
-            alert("Advance request submitted");
-        } catch (error) {
+            toast.success(
+                "Advance request submitted"
+            );
+        } catch (error: any) {
             console.error(error);
-            alert("Failed to submit advance request");
+            toast.error(
+                error?.message ||
+                    "Failed to submit advance request"
+            );
         } finally {
             setAdvanceLoading(false);
         }

@@ -1,11 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
 
-import { createClient } from "@/lib/supabase";
-import { useStaffAttendance } from "@/lib/hooks/useAttendance";
-import { getCurrentDate } from "@/lib/utils";
+import {
+    useMutation,
+    useQuery,
+    useQueryClient,
+} from "@tanstack/react-query";
+
+import {
+    Coffee,
+    Play,
+    Square,
+} from "lucide-react";
+
+import { createClient }
+    from "@/lib/supabase";
+import { getCurrentDate }
+    from "@/lib/utils";
 
 type Props = {
     staffId: string;
@@ -14,401 +30,665 @@ type Props = {
 export default function StaffAttendanceBlock({
     staffId,
 }: Props) {
-    const supabase = createClient();
-    const queryClient = useQueryClient();
-    const today = getCurrentDate();
 
-    const { data: attendance } =
-        useStaffAttendance(
-            staffId,
-            today
-        );
+    const supabase =
+        createClient();
 
-    const [elapsed, setElapsed] =
-        useState("00:00:00");
+    const queryClient =
+        useQueryClient();
 
-    const checkedIn =
-        !!attendance?.is_present &&
-        !!attendance?.check_in;
+    const today =
+        getCurrentDate();
 
-    const checkedOut =
-        checkedIn &&
-        !!attendance?.check_out;
+    // STATUS
+    const {
+        data: status,
+    } =
+        useQuery({
 
-    const getTimeValue = (
-        value?: string | null
-    ) => {
-        if (!value) {
-            return null;
-        }
-
-        const date =
-            value.includes("T")
-                ? new Date(value)
-                : new Date(
-                      `${today}T${value}`
-                  );
-
-        return Number.isNaN(
-            date.getTime()
-        )
-            ? null
-            : date;
-    };
-
-    const formatAttendanceTime = (
-        value?: string | null
-    ) => {
-        const date =
-            getTimeValue(value);
-
-        if (!date) {
-            return "--";
-        }
-
-        return date.toLocaleTimeString(
-            [],
-            {
-                hour: "2-digit",
-                minute: "2-digit",
-            }
-        );
-    };
-
-    // TIMER
-    useEffect(() => {
-        if (
-            !checkedIn ||
-            checkedOut
-        ) {
-            setElapsed("00:00:00");
-            return;
-        }
-
-        const interval = setInterval(() => {
-            updateElapsed();
-        }, 1000);
-
-        updateElapsed();
-
-        return () =>
-            clearInterval(interval);
-    }, [attendance, checkedIn, checkedOut]);
-
-    const updateElapsed = () => {
-        const startDate =
-            getTimeValue(
-                attendance?.check_in
-            );
-
-        if (!startDate) {
-            return;
-        }
-
-        const start =
-            startDate.getTime();
-
-        const now = new Date().getTime();
-
-        const diff = now - start;
-
-        const hrs = Math.floor(
-            diff / 1000 / 60 / 60
-        );
-
-        const mins = Math.floor(
-            (diff / 1000 / 60) % 60
-        );
-
-        const secs = Math.floor(
-            (diff / 1000) % 60
-        );
-
-        setElapsed(
-            `${String(hrs).padStart(
-                2,
-                "0"
-            )}:${String(mins).padStart(
-                2,
-                "0"
-            )}:${String(secs).padStart(
-                2,
-                "0"
-            )}`
-        );
-    };
-
-    const refreshAttendance = () => {
-        queryClient.invalidateQueries({
             queryKey: [
-                "attendance",
+                "attendance-status",
+                staffId,
             ],
-        });
-        queryClient.invalidateQueries({
-            queryKey: [
-                "admin_attendance",
-            ],
-        });
-    };
 
-    const checkInMutation =
-        useMutation({
-            mutationFn:
+            queryFn:
                 async () => {
-                    const payload = {
-                        staff_id:
-                            staffId,
-                        date: today,
-                        is_present:
-                            true,
-                        check_in:
-                            new Date().toISOString(),
-                        check_out:
-                            null,
-                        allowance_earned:
-                            30,
-                        overtime_bonus:
-                            0,
-                    };
 
                     const {
-                        error,
-                    } =
-                        attendance?.id
-                            ? await supabase
-                                  .from(
-                                      "attendance"
-                                  )
-                                  .update(
-                                      payload
-                                  )
-                                  .eq(
-                                      "id",
-                                      attendance.id
-                                  )
-                            : await supabase
-                                  .from(
-                                      "attendance"
-                                  )
-                                  .insert(
-                                      payload
-                                  );
-
-                    if (error) {
-                        throw error;
-                    }
-                },
-            onSuccess:
-                refreshAttendance,
-        });
-
-    const checkOutMutation =
-        useMutation({
-            mutationFn:
-                async () => {
-                    if (
-                        !attendance?.id ||
-                        !checkedIn
-                    ) {
-                        throw new Error(
-                            "Please check in first"
-                        );
-                    }
-
-                    const now =
-                        new Date();
-
-                    const shiftEnd =
-                        new Date();
-
-                    shiftEnd.setHours(
-                        22,
-                        30,
-                        0,
-                        0
-                    );
-
-                    const {
-                        error,
+                        data,
                     } =
                         await supabase
                             .from(
-                                "attendance"
+                                "staff_attendance_status"
                             )
-                            .update({
-                                check_out:
-                                    now.toISOString(),
-
-                                overtime_bonus:
-                                    now >
-                                        shiftEnd
-                                        ? 50
-                                        : 0,
-                            })
+                            .select("*")
                             .eq(
-                                "id",
-                                attendance.id
-                            );
+                                "staff_id",
+                                staffId
+                            )
+                            .single();
 
-                    if (error) {
-                        throw error;
-                    }
+                    return data;
                 },
-            onSuccess:
-                refreshAttendance,
+            enabled:
+                !!staffId,
         });
 
-    // CHECK IN
-    const handleCheckIn =
-        async () => {
-            try {
-                await checkInMutation
-                    .mutateAsync();
-            } catch (error: any) {
-                alert(
-                    error.message
+    // SESSIONS
+    const {
+        data: sessions = [],
+    } =
+        useQuery({
+
+            queryKey: [
+                "attendance-sessions",
+                staffId,
+                today,
+            ],
+
+            queryFn:
+                async () => {
+
+                    const {
+                        data,
+                    } =
+                        await supabase
+                            .from(
+                                "attendance_sessions"
+                            )
+                            .select("*")
+                            .eq(
+                                "staff_id",
+                                staffId
+                            )
+                            .eq(
+                                "attendance_date",
+                                today
+                            )
+                            .order(
+                                "created_at",
+                                {
+                                    ascending: true,
+                                }
+                            );
+
+                    return (
+                        data || []
+                    );
+                },
+            enabled:
+                !!staffId,
+        });
+
+    const refresh = () => {
+
+        queryClient.invalidateQueries({
+            queryKey: [
+                "attendance-status",
+            ],
+        });
+
+        queryClient.invalidateQueries({
+            queryKey: [
+                "attendance-sessions",
+            ],
+        });
+    };
+
+    const postStaffAction =
+        async (url: string) => {
+            const response =
+                await fetch(
+                    url,
+                    {
+                        method:
+                            "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                        body: JSON.stringify(
+                            {
+                                staffId,
+                            }
+                        ),
+                    }
+                );
+
+            if (!response.ok) {
+                const result =
+                    await response
+                        .json()
+                        .catch(
+                            () => ({})
+                        );
+
+                throw new Error(
+                    result.error ||
+                        "Attendance action failed"
                 );
             }
         };
 
-    // CHECK OUT
-    const handleCheckOut = async () => {
-        try {
-            await checkOutMutation
-                .mutateAsync();
-        } catch (error: any) {
-            alert(
-                error.message
+    // CHECK IN
+    const checkInMutation =
+        useMutation({
+
+            mutationFn:
+                async () => {
+
+                    await postStaffAction(
+                        "/api/staff/check-in"
+                    );
+                },
+
+            onSuccess:
+                refresh,
+        });
+
+    // BREAK
+    const breakMutation =
+        useMutation({
+
+            mutationFn:
+                async () => {
+
+                    await postStaffAction(
+                        "/api/staff/break"
+                    );
+                },
+
+            onSuccess:
+                refresh,
+        });
+
+    // RESUME
+    const resumeMutation =
+        useMutation({
+
+            mutationFn:
+                async () => {
+
+                    await postStaffAction(
+                        "/api/staff/resume"
+                    );
+                },
+
+            onSuccess:
+                refresh,
+        });
+
+    // FINAL CHECKOUT
+    const finalCheckoutMutation =
+        useMutation({
+
+            mutationFn:
+                async () => {
+
+                    await postStaffAction(
+                        "/api/staff/final-checkout"
+                    );
+                },
+
+            onSuccess:
+                refresh,
+        });
+
+    // TOTAL WORK TIME
+    const getWorkedMs =
+        () => {
+
+            let total = 0;
+
+            sessions.forEach(
+                (session: any) => {
+
+                    if (
+                        !session.start_time
+                    ) {
+                        return;
+                    }
+
+                    const start =
+                        new Date(
+                            session.start_time
+                        ).getTime();
+
+                    const end =
+                        session.end_time
+                            ? new Date(
+                                session.end_time
+                            ).getTime()
+                            : new Date().getTime();
+
+                    total +=
+                        end - start;
+                }
             );
-        }
-    };
+
+            return total;
+        };
+
+    const [
+        elapsed,
+        setElapsed,
+    ] =
+        useState("00:00:00");
+
+    useEffect(() => {
+
+        const update =
+            () => {
+
+                const diff =
+                    getWorkedMs();
+
+                const hrs =
+                    Math.floor(
+                        diff /
+                        1000 /
+                        60 /
+                        60
+                    );
+
+                const mins =
+                    Math.floor(
+                        (
+                            diff /
+                            1000 /
+                            60
+                        ) % 60
+                    );
+
+                const secs =
+                    Math.floor(
+                        (
+                            diff /
+                            1000
+                        ) % 60
+                    );
+
+                setElapsed(
+                    `${String(
+                        hrs
+                    ).padStart(
+                        2,
+                        "0"
+                    )}:${String(
+                        mins
+                    ).padStart(
+                        2,
+                        "0"
+                    )}:${String(
+                        secs
+                    ).padStart(
+                        2,
+                        "0"
+                    )}`
+                );
+            };
+
+        update();
+
+        const interval =
+            setInterval(
+                update,
+                1000
+            );
+
+        return () =>
+            clearInterval(
+                interval
+            );
+
+    }, [sessions]);
+
+    const [
+        hh,
+        mm,
+        ss,
+    ] =
+        elapsed.split(":");
+
+    const currentStatus =
+        status?.current_status ||
+        "offline";
+
     const loading =
         checkInMutation.isPending ||
-        checkOutMutation.isPending;
-    // TIME BOXES
-    const [hh, mm, ss] =
-        elapsed.split(":");
+        breakMutation.isPending ||
+        resumeMutation.isPending ||
+        finalCheckoutMutation.isPending;
+
+    const totalHours =
+        getWorkedMs() /
+        1000 /
+        60 /
+        60;
+
+    const overtime =
+        totalHours >= 8;
+
+    const currentSession =
+        sessions.find(
+            (s: any) =>
+                !s.end_time
+        );
 
     return (
         <div className="mb-5 bg-gradient-to-b from-zinc-900 to-zinc-950 border border-zinc-800 rounded-[28px] p-4 shadow-2xl">
-            <div className="flex flex-col gap-4">
-                {/* TIMER */}
-                <div className="flex items-center justify-center gap-2">
-                    <div className="w-14 h-14 rounded-2xl bg-zinc-700/80 flex items-center justify-center">
-                        <span className="text-3xl font-light text-white">
-                            {hh}
-                        </span>
-                    </div>
 
-                    <span className="text-3xl text-zinc-500">
-                        :
-                    </span>
+            {/* TIMER */}
+            <div className="flex items-center justify-center gap-2">
 
-                    <div className="w-14 h-14 rounded-2xl bg-zinc-700/80 flex items-center justify-center">
-                        <span className="text-3xl font-light text-white">
-                            {mm}
-                        </span>
-                    </div>
+                {[hh, mm, ss].map(
+                    (
+                        value,
+                        index
+                    ) => (
 
-                    <span className="text-3xl text-zinc-500">
-                        :
-                    </span>
+                        <div
+                            key={
+                                index
+                            }
+                            className="flex items-center gap-2"
+                        >
 
-                    <div className="w-14 h-14 rounded-2xl bg-zinc-700/80 flex items-center justify-center">
-                        <span className="text-3xl font-light text-white">
-                            {ss}
-                        </span>
-                    </div>
-                </div>
+                            <div className="w-14 h-14 rounded-2xl bg-zinc-700/80 flex items-center justify-center">
 
-                <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                        {!checkedIn && (
-                            <p className="text-red-500 text-2xl font-bold">
-                                Out
-                            </p>
-                        )}
+                                <span className="text-3xl font-light text-white">
+                                    {
+                                        value
+                                    }
+                                </span>
 
-                        {checkedIn &&
-                            !checkedOut && (
-                                <p className="text-green-500 text-2xl font-bold">
-                                    Working
-                                </p>
-                            )}
-
-                        {checkedOut && (
-                            <p className="text-yellow-400 text-2xl font-bold">
-                                Completed
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="shrink-0">
-                        {!checkedIn ? (
-                            <button
-                                onClick={
-                                    handleCheckIn
-                                }
-                                disabled={
-                                    loading
-                                }
-                                className="h-11 w-[112px] rounded-2xl bg-emerald-500 text-sm font-semibold text-white transition-all hover:bg-emerald-400 active:scale-95 disabled:opacity-60"
-                            >
-                                {loading
-                                    ? "..."
-                                    : "Check In"}
-                            </button>
-                        ) : !checkedOut ? (
-                            <button
-                                onClick={
-                                    handleCheckOut
-                                }
-                                disabled={
-                                    loading
-                                }
-                                className="h-11 w-[112px] rounded-2xl bg-orange-500 text-sm font-semibold text-white transition-all hover:bg-orange-400 active:scale-95 disabled:opacity-60"
-                            >
-                                {loading
-                                    ? "..."
-                                    : "Check Out"}
-                            </button>
-                        ) : (
-                            <div className="h-11 w-[112px] rounded-2xl bg-zinc-800 text-sm font-semibold text-zinc-300 flex items-center justify-center">
-                                Finished
                             </div>
-                        )}
-                    </div>
-                </div>
+
+                            {index <
+                                2 && (
+                                    <span className="text-3xl text-zinc-500">
+                                        :
+                                    </span>
+                                )}
+
+                        </div>
+                    )
+                )}
+
             </div>
 
-            {/* TIMES */}
-            {checkedIn && (
-                <div className="mt-5 pt-5 border-t border-zinc-800 flex items-center justify-between">
-                    <div>
-                        <p className="text-zinc-500 text-xs mb-1">
-                            Check In
-                        </p>
+            {/* STATUS */}
+            <div className="mt-5 flex items-center justify-between">
 
-                        <p className="text-white font-semibold">
-                            {formatAttendanceTime(
-                                attendance?.check_in
-                            )}
-                        </p>
-                    </div>
+                <div>
 
-                    <div>
-                        <p className="text-zinc-500 text-xs mb-1">
-                            Check Out
-                        </p>
+                    {currentStatus ===
+                        "offline" && (
+                            <p className="text-red-500 text-2xl font-bold">
+                                Offline
+                            </p>
+                        )}
 
-                        <p className="text-white font-semibold">
-                            {formatAttendanceTime(
-                                attendance?.check_out
-                            )}
-                        </p>
-                    </div>
+                    {currentStatus ===
+                        "active" && (
+                            <p className="text-green-500 text-2xl font-bold">
+                                Working
+                            </p>
+                        )}
+
+                    {currentStatus ===
+                        "break" && (
+                            <p className="text-yellow-400 text-2xl font-bold">
+                                On Break
+                            </p>
+                        )}
+
+                    <p className="text-zinc-500 text-sm mt-1">
+
+                        {sessions.length}
+                        {" "}
+                        session(s)
+                        today
+
+                    </p>
+
                 </div>
-            )}
+
+                {/* ACTIONS */}
+                <div className="flex gap-2">
+
+                    {currentStatus ===
+                        "offline" && (
+
+                            <button
+                                onClick={() =>
+                                    checkInMutation.mutate()
+                                }
+                                disabled={
+                                    loading
+                                }
+                                className="h-11 px-5 rounded-2xl bg-emerald-500 text-white font-semibold"
+                            >
+
+                                Check In
+
+                            </button>
+                        )}
+
+                    {currentStatus ===
+                        "active" && (
+
+                            <>
+                                <button
+                                    onClick={() =>
+                                        breakMutation.mutate()
+                                    }
+                                    disabled={
+                                        loading
+                                    }
+                                    className="h-11 px-4 rounded-2xl bg-yellow-500 text-black font-semibold flex items-center gap-2"
+                                >
+
+                                    <Coffee className="w-4 h-4" />
+
+                                    Break
+
+                                </button>
+
+                                <button
+                                    onClick={() =>
+                                        finalCheckoutMutation.mutate()
+                                    }
+                                    disabled={
+                                        loading
+                                    }
+                                    className="h-11 px-4 rounded-2xl bg-orange-500 text-white font-semibold flex items-center gap-2"
+                                >
+
+                                    <Square className="w-4 h-4" />
+
+                                    Checkout
+
+                                </button>
+                            </>
+                        )}
+
+                    {currentStatus ===
+                        "break" && (
+
+                            <button
+                                onClick={() =>
+                                    resumeMutation.mutate()
+                                }
+                                disabled={
+                                    loading
+                                }
+                                className="h-11 px-5 rounded-2xl bg-blue-500 text-white font-semibold flex items-center gap-2"
+                            >
+
+                                <Play className="w-4 h-4" />
+
+                                Resume
+
+                            </button>
+                        )}
+
+                </div>
+
+            </div>
+
+            {/* SUMMARY */}
+            <div className="mt-5 pt-5 border-t border-zinc-800 grid grid-cols-2 gap-4">
+
+                <div>
+
+                    <p className="text-zinc-500 text-xs mb-1">
+                        Started
+                    </p>
+
+                    <p className="text-white font-semibold">
+
+                        {sessions[0]
+                            ?.start_time
+                            ? new Date(
+                                sessions[0]
+                                    .start_time
+                            ).toLocaleTimeString(
+                                [],
+                                {
+                                    hour:
+                                        "2-digit",
+
+                                    minute:
+                                        "2-digit",
+                                }
+                            )
+                            : "--"}
+
+                    </p>
+
+                </div>
+
+                <div>
+
+                    <p className="text-zinc-500 text-xs mb-1">
+                        Overtime
+                    </p>
+
+                    <p
+                        className={`font-semibold ${overtime
+                                ? "text-green-400"
+                                : "text-zinc-400"
+                            }`}
+                    >
+
+                        {overtime
+                            ? "Eligible"
+                            : "No"}
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            {/* SESSION HISTORY */}
+            {sessions.length >
+                0 && (
+
+                    <div className="mt-5 pt-5 border-t border-zinc-800 space-y-3">
+
+                        {sessions.map(
+                            (
+                                session: any,
+                                index
+                            ) => (
+
+                                <div
+                                    key={
+                                        session.id
+                                    }
+                                    className="bg-zinc-800 rounded-2xl p-3 flex items-center justify-between"
+                                >
+
+                                    <div>
+
+                                        <p className="text-sm text-zinc-400">
+                                            Session{" "}
+                                            {index +
+                                                1}
+                                        </p>
+
+                                        <p className="text-white font-medium">
+
+                                            {new Date(
+                                                session.start_time
+                                            ).toLocaleTimeString(
+                                                [],
+                                                {
+                                                    hour:
+                                                        "2-digit",
+
+                                                    minute:
+                                                        "2-digit",
+                                                }
+                                            )}
+
+                                            {" - "}
+
+                                            {session.end_time
+                                                ? new Date(
+                                                    session.end_time
+                                                ).toLocaleTimeString(
+                                                    [],
+                                                    {
+                                                        hour:
+                                                            "2-digit",
+
+                                                        minute:
+                                                            "2-digit",
+                                                    }
+                                                )
+                                                : "Running"}
+
+                                        </p>
+
+                                    </div>
+
+                                    <div className="text-green-400 text-sm font-semibold">
+
+                                        {(
+                                            (
+                                                (
+                                                    session.end_time
+                                                        ? new Date(
+                                                            session.end_time
+                                                        ).getTime()
+                                                        : new Date().getTime()
+                                                ) -
+                                                new Date(
+                                                    session.start_time
+                                                ).getTime()
+                                            ) /
+                                            1000 /
+                                            60 /
+                                            60
+                                        ).toFixed(
+                                            1
+                                        )}
+                                        h
+
+                                    </div>
+
+                                </div>
+                            )
+                        )}
+
+                    </div>
+                )}
+
         </div>
     );
 }

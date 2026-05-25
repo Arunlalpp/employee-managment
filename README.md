@@ -97,10 +97,10 @@ Open **http://localhost:3000** → login with your admin credentials.
 ## 💰 Salary Calculation
 
 ```
-Net Salary = Base Salary + (Days Present × ₹30) - Advance Deductions
+Net Salary = Base Salary + (Days Present × ₹40) - Advance Deductions
 ```
 
-- Daily allowance: **₹30/day** (tea & snacks)
+- Daily allowance: **₹40/day** (tea & snacks)
 - Total staff budget: **₹14,000/month** (distributed across 6 staff)
 - Store hours: **9:30 AM – 10:30 PM, all 7 days**
 
