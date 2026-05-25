@@ -58,7 +58,7 @@ export function AdminDashboardContent() {
   const stats = data.stats;
 
   return (
-    <main className="min-h-screen bg-black text-white p-6 pb-40">
+    <main className="min-h-screen bg-black text-white p-6">
       <div className="mb-8">
         <h1 className="text-4xl font-bold">Admin Dashboard</h1>
         <p className="text-zinc-400 mt-2">Employee management overview</p>
