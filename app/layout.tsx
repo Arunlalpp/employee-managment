@@ -1,49 +1,168 @@
-import type { Metadata, Viewport } from "next";
+import type {
+    Metadata,
+    Viewport,
+} from "next";
+
+import Script from "next/script";
+
 import "./globals.css";
-import { Providers } from "./providers";
-import PwaInstaller from "./components/PwaInstaller";
 
-export const metadata: Metadata = {
-    title: "StoreManager — Gents Collection",
-    description: "Staff & Payroll Management",
+import { Providers }
+    from "./providers";
+
+import PwaInstaller
+    from "./components/PwaInstaller";
+
+export const metadata:
+    Metadata = {
+
+    title:
+        "StoreManager — Gents Collection",
+
+    description:
+        "Staff & Payroll Management",
+
+    manifest:
+        "/manifest.json",
+
     appleWebApp: {
+
         capable: true,
-        statusBarStyle: "black-translucent",
-        title: "StoreManager",
+
+        statusBarStyle:
+            "black-translucent",
+
+        title:
+            "StoreManager",
     },
-    manifest: "/manifest.json",
+
+    icons: {
+
+        icon: "/icon-192.png",
+
+        apple:
+            "/icon-192.png",
+    },
 };
 
-export const viewport: Viewport = {
-    width: "device-width",
+export const viewport:
+    Viewport = {
+
+    width:
+        "device-width",
+
     initialScale: 1,
+
     maximumScale: 1,
+
     userScalable: false,
-    themeColor: "#080808",
-    viewportFit: "cover",
+
+    viewportFit:
+        "cover",
+
+    themeColor:
+        "#080808",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function
+    RootLayout({
+        children,
+    }: {
+        children:
+        React.ReactNode;
+    }) {
+
     return (
-        <html lang="en" className="dark">
+
+        <html
+            lang="en"
+            className="dark"
+        >
+
             <head>
-                <meta name="theme-color" content="#080808" />
-                <meta name="mobile-web-app-capable" content="yes" />
-                <meta name="apple-mobile-web-app-capable" content="yes" />
-                <link rel="manifest" href="/manifest.json" />
-                <link rel="icon" href="/icon-192.png" sizes="192x192" />
-                <link rel="apple-touch-icon" href="/icon-192.png" />
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap"
-                    rel="stylesheet"
+
+                <meta
+                    name="theme-color"
+                    content="#080808"
                 />
+
+                <meta
+                    name="mobile-web-app-capable"
+                    content="yes"
+                />
+
+                <meta
+                    name="apple-mobile-web-app-capable"
+                    content="yes"
+                />
+
+                <meta
+                    name="apple-mobile-web-app-status-bar-style"
+                    content="black-translucent"
+                />
+
+                <link
+                    rel="manifest"
+                    href="/manifest.json"
+                />
+
+                <link
+                    rel="icon"
+                    href="/icon-192.png"
+                />
+
+                <link
+                    rel="apple-touch-icon"
+                    href="/icon-192.png"
+                />
+
             </head>
+
             <body className="antialiased">
-                <Providers>{children}</Providers>
+
+                <Providers>
+                    {children}
+                </Providers>
+
                 <PwaInstaller />
+
+                {/* SERVICE WORKER */}
+                <Script
+                    id="service-worker"
+                    strategy="afterInteractive"
+                >
+
+                    {`
+                        if (
+                            'serviceWorker'
+                            in navigator
+                        ) {
+
+                            window.addEventListener(
+                                'load',
+                                () => {
+
+                                    navigator
+                                        .serviceWorker
+                                        .register(
+                                            '/sw.js'
+                                        )
+                                        .then(() => {
+
+                                            console.log(
+                                                'SW registered'
+                                            );
+
+                                        });
+                                }
+                            );
+                        }
+                    `}
+
+                </Script>
+
             </body>
+
         </html>
     );
 }
