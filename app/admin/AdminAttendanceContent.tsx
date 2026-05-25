@@ -343,7 +343,7 @@ export default function AdminAttendanceContent() {
     ];
 
     return (
-        <div className="px-4 pt-14 pb-32">
+        <div className="px-4 pt-14 pb-4">
 
             {/* HEADER */}
             <div className="flex items-center justify-between mb-5">

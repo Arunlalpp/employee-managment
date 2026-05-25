@@ -72,7 +72,7 @@ export default function CreateStaffContent() {
         };
 
     return (
-        <main className="px-4 pt-14 pb-32 text-white">
+        <main className="px-4 pt-14 pb-4 text-white">
 
             <div className="flex items-center justify-between gap-4 mb-6">
                 <h1 className="text-3xl font-bold">

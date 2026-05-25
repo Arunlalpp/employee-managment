@@ -88,7 +88,7 @@ export default function StaffSalary() {
     const currentMonth = format(new Date(), "yyyy-MM");
 
     return (
-        <div className="px-4 pt-14 pb-32 text-white">
+        <div className="px-4 pt-14 pb-4 text-white">
             <h1 className="text-3xl font-bold mb-5">My Salary</h1>
 
             <div className="flex items-center gap-2 mb-5">
@@ -251,7 +251,7 @@ export default function StaffSalary() {
 
             {showAdvanceModal && (
                 <div className="fixed inset-0 z-[999] bg-black/70 backdrop-blur-sm flex items-end">
-                    <div className="bg-zinc-900 rounded-t-3xl p-6 pb-32 w-full border-t border-zinc-800 max-h-[90vh] overflow-y-auto">
+                    <div className="bg-zinc-900 rounded-t-3xl p-6 pb-4 w-full border-t border-zinc-800 max-h-[90vh] overflow-y-auto">
                         <h2 className="text-2xl font-bold mb-5">Request Advance</h2>
                         <div className="space-y-4">
                             <input

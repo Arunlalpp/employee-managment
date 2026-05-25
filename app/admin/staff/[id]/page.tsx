@@ -35,7 +35,7 @@ export default function StaffDetailsPage() {
 
     if (isLoading) {
         return (
-            <main className="px-4 pt-14 pb-32 text-white">
+            <main className="px-4 pt-14 pb-4 text-white">
                 Loading...
             </main>
         );
@@ -43,7 +43,7 @@ export default function StaffDetailsPage() {
 
     if (error || !data?.staff) {
         return (
-            <main className="px-4 pt-14 pb-32 text-white">
+            <main className="px-4 pt-14 pb-4 text-white">
                 <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-5">
                     Failed to load staff details
                 </div>
@@ -58,7 +58,7 @@ export default function StaffDetailsPage() {
     } = data;
 
     return (
-        <main className="px-4 pt-14 pb-32 text-white">
+        <main className="px-4 pt-14 pb-4 text-white">
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-3xl font-bold">

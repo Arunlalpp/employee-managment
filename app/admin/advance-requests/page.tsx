@@ -79,7 +79,7 @@ export default function AdminAdvanceRequests() {
     }
 
     return (
-        <div className="px-4 pt-14 pb-32 text-white">
+        <div className="px-4 pt-14 pb-4 text-white">
             <h1 className="text-3xl font-bold mb-6">
                 Advance Requests
             </h1>

@@ -30,7 +30,7 @@ export default function ReportsPage() {
 
     if (isLoading) {
         return (
-            <main className="p-6 max-w-md mx-auto pb-32">
+            <main className="p-6 max-w-md mx-auto pb-4">
                 <div className="space-y-4 animate-pulse">
 
                     <div className="h-10 w-40 bg-zinc-800 rounded-xl" />
@@ -48,7 +48,7 @@ export default function ReportsPage() {
 
     if (error || !data) {
         return (
-            <main className="p-6 max-w-md mx-auto pb-32">
+            <main className="p-6 max-w-md mx-auto pb-4">
 
                 <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-5">
 
@@ -335,7 +335,7 @@ export default function ReportsPage() {
         }) || [];
 
     return (
-        <main className="p-6 max-w-md mx-auto pb-32">
+        <main className="p-6 max-w-md mx-auto pb-4">
 
             <h1 className="text-3xl font-bold text-white mb-6">
                 Reports

@@ -16,14 +16,14 @@ export default function AdminNotificationsPage() {
 
     if (isLoading) {
         return (
-            <main className="px-4 pt-14 pb-32 text-white">
+            <main className="px-4 pt-14 pb-4 text-white">
                 Loading...
             </main>
         );
     }
 
     return (
-        <main className="px-4 pt-14 pb-32 text-white">
+        <main className="px-4 pt-14 pb-4 text-white">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-3xl font-bold">
                     Notifications
