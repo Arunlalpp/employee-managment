@@ -131,34 +131,25 @@ export default function
                     id="service-worker"
                     strategy="afterInteractive"
                 >
-
                     {`
-                        if (
-                            'serviceWorker'
-                            in navigator
-                        ) {
+        if (
+            'serviceWorker'
+            in navigator
+        ) {
 
-                            window.addEventListener(
-                                'load',
-                                () => {
+            window.addEventListener(
+                'load',
+                () => {
 
-                                    navigator
-                                        .serviceWorker
-                                        .register(
-                                            '/sw.js'
-                                        )
-                                        .then(() => {
-
-                                            console.log(
-                                                'SW registered'
-                                            );
-
-                                        });
-                                }
-                            );
-                        }
-                    `}
-
+                    navigator
+                        .serviceWorker
+                        .register(
+                            '/sw.js'
+                        );
+                }
+            );
+        }
+    `}
                 </Script>
 
             </body>
