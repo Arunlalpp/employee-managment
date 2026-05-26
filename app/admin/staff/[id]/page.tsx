@@ -10,6 +10,7 @@ import { ArrowLeft }
     from "lucide-react";
 import { useStaffDetails }
     from "@/lib/hooks/use-staff-details";
+import Loading from "@/components/Loading";
 
 export default function StaffDetailsPage() {
     const params =
@@ -34,11 +35,7 @@ export default function StaffDetailsPage() {
         );
 
     if (isLoading) {
-        return (
-            <main className="px-4 pt-14 pb-4 text-white">
-                Loading...
-            </main>
-        );
+        return <Loading className="px-4 pt-14 pb-4 text-white" />;
     }
 
     if (error || !data?.staff) {

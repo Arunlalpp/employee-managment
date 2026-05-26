@@ -4,6 +4,7 @@ import { useState } from "react";
 import { addMonths, format, parseISO, subMonths } from "date-fns";
 import { TrendingDown, CalendarDays, Trophy, Clock3 } from "lucide-react";
 import { toast } from "sonner";
+import Loading from "@/components/Loading";
 
 import { useAddAdvanceRequest }
     from "@/lib/hooks/use-advance-mutations";
@@ -65,7 +66,7 @@ export default function StaffSalary() {
     };
 
     if (isLoading) {
-        return <div className="p-6 text-white">Loading...</div>;
+        return <Loading className="p-6 text-white" />;
     }
 
     if (error || !data) {

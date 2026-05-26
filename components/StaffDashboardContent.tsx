@@ -6,6 +6,7 @@ import { useStaffAttendance } from "@/lib/hooks/useAttendance";
 import { useDeductions } from "@/lib/hooks/useDeductions";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
+import Loading from "@/components/Loading";
 import StaffDashboardUI from "./StaffDashboardUI";
 import { getCurrentDate } from "@/lib/utils";
 
@@ -34,7 +35,7 @@ export function StaffDashboardContent() {
   }, [attendance?.is_present, deductions]);
 
   if (userLoading || profileLoading || !user || !profile) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return <Loading className="min-h-screen" />;
   }
 
   return (

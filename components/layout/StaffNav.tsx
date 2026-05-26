@@ -26,7 +26,7 @@ export default function StaffNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border bottom-nav">
-      <div className="flex items-center justify-around px-2 pt-2 pb-1">
+      <div className="flex items-center justify-around px-2 pt-1.5 pb-1">
         {navItems.map(({ href, icon: Icon, label }) => {
           const active = pathname.startsWith(href);
           return (
@@ -38,7 +38,7 @@ export default function StaffNav() {
                 active ? "text-gold" : "text-ink-muted"
               )}
             >
-              <div className={cn("p-1.5 rounded-lg transition-all", active ? "bg-gold/15" : "")}>
+              <div className={cn("p-1 rounded-lg transition-all", active ? "bg-gold/15" : "")}>
                 <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.8} />
               </div>
               <span className={cn("text-[10px] font-medium tracking-wide", active ? "text-gold" : "text-ink-muted")}>

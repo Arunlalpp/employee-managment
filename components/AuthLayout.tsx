@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useProfile } from "@/lib/hooks/useProfile";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Loading from "@/components/Loading";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -28,7 +29,7 @@ export function AuthLayout({ children, requiredRole }: AuthLayoutProps) {
   }, [profile, profileLoading, requiredRole, router]);
 
   if (userLoading || profileLoading || !user || !profile) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return <Loading className="min-h-screen" />;
   }
 
   return <>{children}</>;

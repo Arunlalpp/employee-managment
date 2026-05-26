@@ -38,8 +38,6 @@ export async function POST(
                 .single();
 
         if (
-            status?.current_status !==
-                "active" ||
             !status
                 ?.current_session_id
         ) {

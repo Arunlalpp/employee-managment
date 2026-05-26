@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { Plus }
     from "lucide-react";
+import Loading from "@/components/Loading";
 
 export default function StaffPage() {
     const router = useRouter();
@@ -26,11 +27,7 @@ export default function StaffPage() {
     }, [user, profile, userLoading, profileLoading, router]);
 
     if (userLoading || profileLoading) {
-        return (
-            <div className="p-6 text-white">
-                Loading...
-            </div>
-        );
+        return <Loading className="p-6 text-white" />;
     }
 
     if (!user || !profile) {

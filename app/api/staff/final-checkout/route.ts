@@ -11,48 +11,6 @@ const supabase =
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-function getLocalAttendanceStamp() {
-    const parts =
-        new Intl.DateTimeFormat(
-            "en-CA",
-            {
-                timeZone:
-                    "Asia/Kolkata",
-                year:
-                    "numeric",
-                month:
-                    "2-digit",
-                day:
-                    "2-digit",
-                hour:
-                    "2-digit",
-                minute:
-                    "2-digit",
-                second:
-                    "2-digit",
-                hour12:
-                    false,
-            }
-        ).formatToParts(
-            new Date()
-        );
-
-    const values =
-        Object.fromEntries(
-            parts.map((part) => [
-                part.type,
-                part.value,
-            ])
-        );
-
-    return {
-        date:
-            `${values.year}-${values.month}-${values.day}`,
-        time:
-            `${values.hour}:${values.minute}:${values.second}`,
-    };
-}
-
 export async function POST(
     req: Request
 ) {
@@ -63,9 +21,6 @@ export async function POST(
             staffId,
         } =
             await req.json();
-
-        const attendanceStamp =
-            getLocalAttendanceStamp();
 
         const {
             data: status,
@@ -82,22 +37,6 @@ export async function POST(
                 .single();
 
         // CLOSE CURRENT SESSION
-        if (
-            !status ||
-            status.current_status ===
-                "offline"
-        ) {
-            return NextResponse.json(
-                {
-                    error:
-                        "No active attendance to checkout",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
-
         if (
             status
                 ?.current_session_id
@@ -117,23 +56,6 @@ export async function POST(
                     status.current_session_id
                 );
         }
-
-        await supabase
-            .from(
-                "attendance"
-            )
-            .update({
-                check_out:
-                    attendanceStamp.time,
-            })
-            .eq(
-                "staff_id",
-                staffId
-            )
-            .eq(
-                "date",
-                attendanceStamp.date
-            );
 
         // OFFLINE
         await supabase

@@ -8,6 +8,7 @@ import {
   Wallet,
   LogOut,
 } from "lucide-react";
+import Loading from "@/components/Loading";
 import { useDashboard } from "@/lib/hooks/use-dashboard";
 import { createClient } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
@@ -41,7 +42,7 @@ export function AdminDashboardContent() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return <Loading className="min-h-screen" />;
   }
 
   if (error || !data) {

@@ -4,6 +4,7 @@ import {
     useClearNotifications,
     useNotifications,
 } from "@/lib/hooks/use-notifications";
+import Loading from "@/components/Loading";
 
 export default function AdminNotificationsPage() {
     const {
@@ -15,11 +16,7 @@ export default function AdminNotificationsPage() {
         useClearNotifications();
 
     if (isLoading) {
-        return (
-            <main className="px-4 pt-14 pb-4 text-white">
-                Loading...
-            </main>
-        );
+        return <Loading className="px-4 pt-14 pb-4 text-white" />;
     }
 
     return (

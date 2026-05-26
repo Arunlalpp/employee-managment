@@ -20,8 +20,6 @@ import {
 
 import { createClient }
     from "@/lib/supabase";
-import { getCurrentDate }
-    from "@/lib/utils";
 
 type Props = {
     staffId: string;
@@ -38,7 +36,9 @@ export default function StaffAttendanceBlock({
         useQueryClient();
 
     const today =
-        getCurrentDate();
+        new Date()
+            .toISOString()
+            .split("T")[0];
 
     // STATUS
     const {
@@ -70,8 +70,6 @@ export default function StaffAttendanceBlock({
 
                     return data;
                 },
-            enabled:
-                !!staffId,
         });
 
     // SESSIONS
@@ -116,8 +114,6 @@ export default function StaffAttendanceBlock({
                         data || []
                     );
                 },
-            enabled:
-                !!staffId,
         });
 
     const refresh = () => {
@@ -135,43 +131,6 @@ export default function StaffAttendanceBlock({
         });
     };
 
-    const postStaffAction =
-        async (url: string) => {
-            const response =
-                await fetch(
-                    url,
-                    {
-                        method:
-                            "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json",
-                        },
-
-                        body: JSON.stringify(
-                            {
-                                staffId,
-                            }
-                        ),
-                    }
-                );
-
-            if (!response.ok) {
-                const result =
-                    await response
-                        .json()
-                        .catch(
-                            () => ({})
-                        );
-
-                throw new Error(
-                    result.error ||
-                        "Attendance action failed"
-                );
-            }
-        };
-
     // CHECK IN
     const checkInMutation =
         useMutation({
@@ -179,8 +138,23 @@ export default function StaffAttendanceBlock({
             mutationFn:
                 async () => {
 
-                    await postStaffAction(
-                        "/api/staff/check-in"
+                    await fetch(
+                        "/api/staff/check-in",
+                        {
+                            method:
+                                "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
+
+                            body: JSON.stringify(
+                                {
+                                    staffId,
+                                }
+                            ),
+                        }
                     );
                 },
 
@@ -195,8 +169,23 @@ export default function StaffAttendanceBlock({
             mutationFn:
                 async () => {
 
-                    await postStaffAction(
-                        "/api/staff/break"
+                    await fetch(
+                        "/api/staff/break",
+                        {
+                            method:
+                                "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
+
+                            body: JSON.stringify(
+                                {
+                                    staffId,
+                                }
+                            ),
+                        }
                     );
                 },
 
@@ -211,8 +200,23 @@ export default function StaffAttendanceBlock({
             mutationFn:
                 async () => {
 
-                    await postStaffAction(
-                        "/api/staff/resume"
+                    await fetch(
+                        "/api/staff/resume",
+                        {
+                            method:
+                                "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
+
+                            body: JSON.stringify(
+                                {
+                                    staffId,
+                                }
+                            ),
+                        }
                     );
                 },
 
@@ -227,8 +231,23 @@ export default function StaffAttendanceBlock({
             mutationFn:
                 async () => {
 
-                    await postStaffAction(
-                        "/api/staff/final-checkout"
+                    await fetch(
+                        "/api/staff/final-checkout",
+                        {
+                            method:
+                                "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
+
+                            body: JSON.stringify(
+                                {
+                                    staffId,
+                                }
+                            ),
+                        }
                     );
                 },
 
@@ -276,6 +295,10 @@ export default function StaffAttendanceBlock({
         setElapsed,
     ] =
         useState("00:00:00");
+        
+    const currentStatus =
+        status?.current_status ||
+        "offline";
 
     useEffect(() => {
 
@@ -332,6 +355,10 @@ export default function StaffAttendanceBlock({
 
         update();
 
+        if (currentStatus !== "active") {
+            return;
+        }
+
         const interval =
             setInterval(
                 update,
@@ -343,7 +370,7 @@ export default function StaffAttendanceBlock({
                 interval
             );
 
-    }, [sessions]);
+    }, [sessions, currentStatus]);
 
     const [
         hh,
@@ -351,10 +378,6 @@ export default function StaffAttendanceBlock({
         ss,
     ] =
         elapsed.split(":");
-
-    const currentStatus =
-        status?.current_status ||
-        "offline";
 
     const loading =
         checkInMutation.isPending ||
@@ -579,8 +602,8 @@ export default function StaffAttendanceBlock({
 
                     <p
                         className={`font-semibold ${overtime
-                                ? "text-green-400"
-                                : "text-zinc-400"
+                            ? "text-green-400"
+                            : "text-zinc-400"
                             }`}
                     >
 

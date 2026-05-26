@@ -23,6 +23,7 @@ import {
     Plus,
     XCircle,
 } from "lucide-react";
+import Loading from "@/components/Loading";
 
 import {
     formatDate,
@@ -440,11 +441,7 @@ export default function AdminAttendanceContent() {
 
                     {/* LOADING */}
                     {isLoading ? (
-
-                        <div className="text-center text-zinc-500 py-20">
-                            Loading...
-                        </div>
-
+                        <Loading className="text-center text-zinc-500 py-20" />
                     ) : (
 
                         <div className="space-y-4">

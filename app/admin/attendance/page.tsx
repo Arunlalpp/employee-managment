@@ -2,6 +2,7 @@ import {
     Suspense,
 } from "react";
 import AdminAttendanceContent from "../AdminAttendanceContent";
+import Loading from "@/components/Loading";
 
 
 export default function Page() {
@@ -9,15 +10,9 @@ export default function Page() {
     return (
 
         <Suspense
-            fallback={
-                <div className="px-4 pt-14 text-white">
-                    Loading...
-                </div>
-            }
+            fallback={<Loading className="px-4 pt-14 text-white" />}
         >
-
             <AdminAttendanceContent />
-
         </Suspense>
     );
 }

@@ -56,7 +56,7 @@ export default function StaffDashboard() {
         if (
             !profileLoading &&
             profile?.role ===
-                "admin"
+            "admin"
         ) {
             router.push(
                 "/admin/dashboard"

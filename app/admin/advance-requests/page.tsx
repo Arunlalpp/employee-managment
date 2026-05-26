@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useAdvanceRequestsWithProfiles } from "@/lib/hooks/useMonthAdvances";
 import { useUpdateAdvanceRequest }
     from "@/lib/hooks/use-advance-mutations";
+import Loading from "@/components/Loading";
 
 export default function AdminAdvanceRequests() {
     const {
@@ -71,11 +72,7 @@ export default function AdminAdvanceRequests() {
         };
 
     if (loading) {
-        return (
-            <div className="p-6 text-white">
-                Loading...
-            </div>
-        );
+        return <Loading className="p-6 text-white" />;
     }
 
     return (
