@@ -11,7 +11,7 @@ import { Providers }
     from "./providers";
 
 import PwaInstaller
-    from "./components/PwaInstaller";
+    from "../components/PwaInstaller";
 
 export const metadata:
     Metadata = {
@@ -22,7 +22,7 @@ export const metadata:
     description:
         "Staff & Payroll Management",
 
-    manifest: "/manifest.json?v=2",
+    manifest: "/manifest.json?v=3",
 
     appleWebApp: {
 
@@ -102,7 +102,7 @@ export default function
 
                 <link
                     rel="manifest"
-                    href="/manifest.json?v=2"
+                    href="/manifest.json?v=3"
                 />
 
                 <link

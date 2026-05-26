@@ -148,7 +148,7 @@ export default function StaffDashboard() {
     }
 
     return (
-        <div className="px-4 pt-14 pb-44 text-white">
+        <div className="px-4 pt-14 pb-0 text-white">
             {/* HEADER */}
             <h1 className="text-4xl font-bold mb-2">
                 Hello {profile.name}

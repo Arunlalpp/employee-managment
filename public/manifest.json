@@ -2,6 +2,7 @@
   "name": "Gents Store Manager",
   "short_name": "StoreManager",
   "description": "Staff & Payroll Management for Gents Collection",
+  "id": "/login",
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",
