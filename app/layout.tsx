@@ -22,8 +22,7 @@ export const metadata:
     description:
         "Staff & Payroll Management",
 
-    manifest:
-        "/manifest.json",
+    manifest: "/manifest.json?v=2",
 
     appleWebApp: {
 
@@ -103,7 +102,7 @@ export default function
 
                 <link
                     rel="manifest"
-                    href="/manifest.json"
+                    href="/manifest.json?v=2"
                 />
 
                 <link
