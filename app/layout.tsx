@@ -3,15 +3,11 @@ import type {
     Viewport,
 } from "next";
 
-import Script from "next/script";
-
 import "./globals.css";
 
-import { Providers }
-    from "./providers";
-
-import PwaInstaller
-    from "../components/PwaInstaller";
+import {
+    Providers,
+} from "./providers";
 
 export const metadata:
     Metadata = {
@@ -22,7 +18,8 @@ export const metadata:
     description:
         "Staff & Payroll Management",
 
-    manifest: "/manifest.json?v=4",
+    manifest:
+        "/manifest.json?v=10",
 
     appleWebApp: {
 
@@ -37,7 +34,8 @@ export const metadata:
 
     icons: {
 
-        icon: "/icon-192.png",
+        icon:
+            "/icon-192.png",
 
         apple:
             "/icon-192.png",
@@ -102,7 +100,7 @@ export default function
 
                 <link
                     rel="manifest"
-                    href="/manifest.json?v=4"
+                    href="/manifest.json?v=10"
                 />
 
                 <link
@@ -122,34 +120,6 @@ export default function
                 <Providers>
                     {children}
                 </Providers>
-
-                <PwaInstaller />
-
-                {/* SERVICE WORKER */}
-                <Script
-                    id="service-worker"
-                    strategy="afterInteractive"
-                >
-                    {`
-        if (
-            'serviceWorker'
-            in navigator
-        ) {
-
-            window.addEventListener(
-                'load',
-                () => {
-
-                    navigator
-                        .serviceWorker
-                        .register(
-                            '/sw.js'
-                        );
-                }
-            );
-        }
-    `}
-                </Script>
 
             </body>
 
