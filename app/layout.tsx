@@ -8,9 +8,7 @@ import "./globals.css";
 import {
     Providers,
 } from "./providers";
-
-import PwaInstaller
-    from "./components/PwaInstaller";
+import PwaInstaller from "@/components/PwaInstaller";
 
 export const metadata:
     Metadata = {
