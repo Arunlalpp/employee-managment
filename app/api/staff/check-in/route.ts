@@ -42,12 +42,16 @@ async function requireStaffSelf(staffId: string) {
 
     const { data: profile } = await serverClient
         .from("profiles")
-        .select("id, role")
+        .select("id, role, is_active")
         .eq("auth_id", user.id)
         .single();
 
     if (!profile || profile.role !== "staff" || profile.id !== staffId) {
         return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    }
+
+    if (profile.is_active === false) {
+        return { error: NextResponse.json({ error: "Account is deactivated" }, { status: 403 }) };
     }
 
     return {};
@@ -89,17 +93,24 @@ export async function POST(req: Request) {
 
         if (error) throw error;
 
-        // Write to attendance table so staff dashboard reflects presence immediately.
-        // ignoreDuplicates keeps the original check_in if they've already checked in today.
+        // Preserve the original check_in time if the record already has one
+        // (e.g. admin set it manually), but always mark is_present: true.
+        const { data: existingAttendance } = await supabase
+            .from("attendance")
+            .select("check_in")
+            .eq("staff_id", staffId)
+            .eq("date", istDate)
+            .maybeSingle();
+
         await supabase.from("attendance").upsert(
             {
                 staff_id: staffId,
                 date: istDate,
                 is_present: true,
-                check_in: istTime,
+                check_in: existingAttendance?.check_in ?? istTime,
                 allowance_earned: DAILY_ALLOWANCE,
             },
-            { onConflict: "staff_id,date", ignoreDuplicates: true }
+            { onConflict: "staff_id,date" }
         );
 
         await supabase

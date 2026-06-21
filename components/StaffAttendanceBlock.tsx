@@ -6,6 +6,15 @@ import {
     useState,
 } from "react";
 
+function toIST(isoStr: string): string {
+    return new Date(isoStr).toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+    });
+}
+
 import {
     useMutation,
     useQuery,
@@ -580,24 +589,7 @@ export default function StaffAttendanceBlock({
                     </p>
 
                     <p className="text-white font-semibold">
-
-                        {sessions[0]
-                            ?.start_time
-                            ? new Date(
-                                sessions[0]
-                                    .start_time
-                            ).toLocaleTimeString(
-                                [],
-                                {
-                                    hour:
-                                        "2-digit",
-
-                                    minute:
-                                        "2-digit",
-                                }
-                            )
-                            : "--"}
-
+                        {sessions[0]?.start_time ? toIST(sessions[0].start_time) : "--"}
                     </p>
 
                 </div>
@@ -653,37 +645,9 @@ export default function StaffAttendanceBlock({
                                         </p>
 
                                         <p className="text-white font-medium">
-
-                                            {new Date(
-                                                session.start_time
-                                            ).toLocaleTimeString(
-                                                [],
-                                                {
-                                                    hour:
-                                                        "2-digit",
-
-                                                    minute:
-                                                        "2-digit",
-                                                }
-                                            )}
-
+                                            {toIST(session.start_time)}
                                             {" - "}
-
-                                            {session.end_time
-                                                ? new Date(
-                                                    session.end_time
-                                                ).toLocaleTimeString(
-                                                    [],
-                                                    {
-                                                        hour:
-                                                            "2-digit",
-
-                                                        minute:
-                                                            "2-digit",
-                                                    }
-                                                )
-                                                : "Running"}
-
+                                            {session.end_time ? toIST(session.end_time) : "Running"}
                                         </p>
 
                                     </div>

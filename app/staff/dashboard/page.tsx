@@ -18,6 +18,8 @@ import {
     format,
     startOfWeek,
     endOfWeek,
+    eachDayOfInterval,
+    parseISO,
 } from "date-fns";
 
 import {
@@ -36,6 +38,15 @@ import { useMonthAttendance } from "@/lib/hooks/useMonthAttendance";
 import { useMonthAdvances } from "@/lib/hooks/useMonthAdvances";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
+
+function sessionToIST(isoStr: string): string {
+    return new Date(isoStr).toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+    });
+}
 
 export default function StaffDashboard() {
     const router =
@@ -107,6 +118,22 @@ export default function StaffDashboard() {
                 .eq("staff_id", profile!.id)
                 .single();
             return data;
+        },
+        enabled: !!profile?.id,
+        staleTime: 30 * 1000,
+    });
+
+    // Today sessions — used as fallback for check_in time when attendance record is stale
+    const { data: todaySessions = [] } = useQuery({
+        queryKey: ["attendance-sessions", profile?.id, today],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("attendance_sessions")
+                .select("start_time, end_time")
+                .eq("staff_id", profile!.id)
+                .eq("attendance_date", today)
+                .order("created_at", { ascending: true });
+            return data || [];
         },
         enabled: !!profile?.id,
         staleTime: 30 * 1000,
@@ -221,9 +248,11 @@ export default function StaffDashboard() {
                             </p>
 
                             <p className="text-lg">
-                                {formatTime(
-                                    todayRecord?.check_in
-                                )}
+                                {todayRecord?.check_in
+                                    ? formatTime(todayRecord.check_in)
+                                    : (todaySessions as any[])[0]?.start_time
+                                        ? sessionToIST((todaySessions as any[])[0].start_time)
+                                        : "--"}
                             </p>
                         </div>
 
@@ -234,9 +263,7 @@ export default function StaffDashboard() {
 
                             <p className="text-lg">
                                 {todayRecord?.check_out
-                                    ? formatTime(
-                                        todayRecord.check_out
-                                    )
+                                    ? formatTime(todayRecord.check_out)
                                     : "--"}
                             </p>
                         </div>
@@ -322,54 +349,68 @@ export default function StaffDashboard() {
                     )}
             </div>
             {/* WEEK ATTENDANCE */}
-            <div className="mt-5 bg-zinc-900 rounded-3xl p-5 border border-zinc-800">
-                <h2 className="text-xl font-semibold mb-4">
-                    Weekly Attendance
-                </h2>
+            {(() => {
+                const weekDays = eachDayOfInterval({
+                    start: parseISO(weekStart),
+                    end: parseISO(weekEnd),
+                }).filter((d) => format(d, "yyyy-MM-dd") <= today);
 
-                <div className="space-y-3">
-                    {weekRecords.map(
-                        (
-                            item: any
-                        ) => (
-                            <div
-                                key={
-                                    item.id
-                                }
-                                className="flex items-center justify-between bg-zinc-800 rounded-2xl px-4 py-3"
-                            >
-                                <div>
-                                    <p className="font-medium">
-                                        {formatDate(
-                                            item.date
-                                        )}
-                                    </p>
+                const recordMap = new Map(
+                    (weekRecords as any[]).map((r) => [r.date, r])
+                );
 
-                                    <p className="text-xs text-zinc-500">
-                                        {item.check_in
-                                            ? formatTime(
-                                                item.check_in
-                                            )
-                                            : "--"}
-                                        {" - "}
-                                        {item.check_out
-                                            ? formatTime(
-                                                item.check_out
-                                            )
-                                            : "--"}
-                                    </p>
-                                </div>
+                return (
+                    <div className="mt-5 bg-zinc-900 rounded-3xl p-5 border border-zinc-800">
+                        <h2 className="text-xl font-semibold mb-4">
+                            Weekly Attendance
+                        </h2>
 
-                                <div className="text-green-500 font-semibold">
-                                    +₹
-                                    {item.allowance_earned ||
-                                        0}
-                                </div>
-                            </div>
-                        )
-                    )}
-                </div>
-            </div>
+                        <div className="space-y-3">
+                            {weekDays.map((day) => {
+                                const dateStr = format(day, "yyyy-MM-dd");
+                                const record = recordMap.get(dateStr);
+                                const isPresent = record?.is_present ?? false;
+                                const isToday = dateStr === today;
+
+                                return (
+                                    <div
+                                        key={dateStr}
+                                        className={`flex items-center justify-between rounded-2xl px-4 py-3 ${
+                                            isPresent
+                                                ? "bg-zinc-800"
+                                                : "bg-zinc-800/50"
+                                        }`}
+                                    >
+                                        <div>
+                                            <p className="font-medium flex items-center gap-2">
+                                                {format(day, "EEE, dd MMM")}
+                                                {isToday && (
+                                                    <span className="text-xs text-yellow-400 font-normal">Today</span>
+                                                )}
+                                            </p>
+                                            <p className="text-xs mt-0.5">
+                                                {isPresent ? (
+                                                    <span className="text-zinc-400">
+                                                        {record?.check_in ? formatTime(record.check_in) : "--"}
+                                                        {" – "}
+                                                        {record?.check_out ? formatTime(record.check_out) : "--"}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-red-400">Absent</span>
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div className={`font-semibold text-sm ${isPresent ? "text-green-500" : "text-zinc-600"}`}>
+                                            {isPresent ? `+₹${record?.allowance_earned || 0}` : "₹0"}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 }

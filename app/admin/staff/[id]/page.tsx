@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useStaffDetails } from "@/lib/hooks/use-staff-details";
 import Loading from "@/components/Loading";
+import { formatDate, formatTime } from "@/lib/utils";
 
 export default function StaffDetailsPage() {
     const params = useParams<{ id: string }>();
@@ -170,10 +171,17 @@ export default function StaffDetailsPage() {
                             className="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between"
                         >
                             <div>
-                                <p className="font-medium">{item.date}</p>
+                                <p className="font-medium">{formatDate(item.date)}</p>
                                 <p className="text-zinc-500 text-sm mt-1">
                                     {item.is_present ? "Present" : "Absent"}
                                 </p>
+                                {item.is_present && (item.check_in || item.check_out) && (
+                                    <p className="text-zinc-400 text-xs mt-0.5">
+                                        {item.check_in ? formatTime(item.check_in) : "--"}
+                                        {" → "}
+                                        {item.check_out ? formatTime(item.check_out) : "--"}
+                                    </p>
+                                )}
                             </div>
                             <div className="text-right">
                                 <p className="text-green-400 font-semibold">
