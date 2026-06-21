@@ -1,101 +1,122 @@
-import { NextResponse }
-    from "next/server";
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-import {
-    createClient,
-} from "@supabase/supabase-js";
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-const supabase =
-    createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+const DAILY_ALLOWANCE = 40;
 
-export async function POST(
-    req: Request
-) {
+function toISTDate(): string {
+    return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(new Date());
+}
 
+function toISTTime(): string {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+    }).formatToParts(new Date());
+    const v = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    return `${v.hour}:${v.minute}:${v.second}`;
+}
+
+async function requireStaffSelf(staffId: string) {
+    const serverClient = await createServerSupabaseClient();
+    const { data: { user } } = await serverClient.auth.getUser();
+
+    if (!user) {
+        return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+    }
+
+    const { data: profile } = await serverClient
+        .from("profiles")
+        .select("id, role")
+        .eq("auth_id", user.id)
+        .single();
+
+    if (!profile || profile.role !== "staff" || profile.id !== staffId) {
+        return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    }
+
+    return {};
+}
+
+export async function POST(req: Request) {
     try {
+        const { staffId } = await req.json();
 
-        const {
-            staffId,
-        } =
-            await req.json();
+        const auth = await requireStaffSelf(staffId);
+        if (auth.error) return auth.error;
 
-        // CREATE NEW SESSION
-        const {
-            data: session,
-            error,
-        } =
-            await supabase
-                .from(
-                    "attendance_sessions"
-                )
-                .insert({
-                    staff_id:
-                        staffId,
+        const { data: existing } = await supabase
+            .from("staff_attendance_status")
+            .select("current_status, current_session_id")
+            .eq("staff_id", staffId)
+            .single();
 
-                    attendance_date:
-                        new Date()
-                            .toISOString()
-                            .split(
-                                "T"
-                            )[0],
-
-                    start_time:
-                        new Date()
-                            .toISOString(),
-
-                    is_break:
-                        false,
-                })
-                .select()
-                .single();
-
-        if (error) {
-            throw error;
+        if (existing?.current_status === "active") {
+            return NextResponse.json(
+                { error: "Already checked in" },
+                { status: 400 }
+            );
         }
 
-        // UPDATE STATUS
+        const istDate = toISTDate();
+        const istTime = toISTTime();
+
+        const { data: session, error } = await supabase
+            .from("attendance_sessions")
+            .insert({
+                staff_id: staffId,
+                attendance_date: istDate,
+                start_time: new Date().toISOString(),
+                is_break: false,
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Write to attendance table so staff dashboard reflects presence immediately.
+        // ignoreDuplicates keeps the original check_in if they've already checked in today.
+        await supabase.from("attendance").upsert(
+            {
+                staff_id: staffId,
+                date: istDate,
+                is_present: true,
+                check_in: istTime,
+                allowance_earned: DAILY_ALLOWANCE,
+            },
+            { onConflict: "staff_id,date", ignoreDuplicates: true }
+        );
+
         await supabase
-            .from(
-                "staff_attendance_status"
-            )
+            .from("staff_attendance_status")
             .upsert(
                 {
-                    staff_id:
-                        staffId,
-
-                    current_status:
-                        "active",
-
-                    current_session_id:
-                        session.id,
-
-                    updated_at:
-                        new Date()
-                            .toISOString(),
+                    staff_id: staffId,
+                    current_status: "active",
+                    current_session_id: session.id,
+                    updated_at: new Date().toISOString(),
                 },
-                {
-                    onConflict:
-                        "staff_id",
-                }
+                { onConflict: "staff_id" }
             );
 
-        return NextResponse.json({
-            success: true,
-        });
-
+        return NextResponse.json({ success: true });
     } catch (error) {
-
         return NextResponse.json(
-            {
-                error:
-                    "Check-in failed",
-            },
-            {
-                status: 500,
-            }
+            { error: "Check-in failed" },
+            { status: 500 }
         );
     }
 }

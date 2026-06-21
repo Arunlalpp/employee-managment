@@ -35,10 +35,12 @@ export default function StaffAttendanceBlock({
     const queryClient =
         useQueryClient();
 
-    const today =
-        new Date()
-            .toISOString()
-            .split("T")[0];
+    const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(new Date());
 
     // STATUS
     const {
@@ -128,6 +130,12 @@ export default function StaffAttendanceBlock({
             queryKey: [
                 "attendance-sessions",
             ],
+        });
+
+        // Invalidate attendance table queries so Today Status, Days Present,
+        // Weekly Attendance, and Monthly stats all refresh immediately
+        queryClient.invalidateQueries({
+            queryKey: ["attendance"],
         });
     };
 

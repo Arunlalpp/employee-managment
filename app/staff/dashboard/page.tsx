@@ -34,6 +34,8 @@ import {
 } from "@/lib/hooks/useAttendance";
 import { useMonthAttendance } from "@/lib/hooks/useMonthAttendance";
 import { useMonthAdvances } from "@/lib/hooks/useMonthAdvances";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase";
 
 export default function StaffDashboard() {
     const router =
@@ -93,6 +95,23 @@ export default function StaffDashboard() {
         today
     );
 
+    // Live session status — fallback for "present today" when attendance table
+    // hasn't been written yet (staff checked in but no record exists)
+    const supabase = createClient();
+    const { data: attendanceStatus } = useQuery({
+        queryKey: ["attendance-status", profile?.id],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("staff_attendance_status")
+                .select("current_status")
+                .eq("staff_id", profile!.id)
+                .single();
+            return data;
+        },
+        enabled: !!profile?.id,
+        staleTime: 30 * 1000,
+    });
+
     // WEEK ATTENDANCE
     const { data: weekRecords = [] } = useStaffAttendanceRange(
         profile?.id || "",
@@ -119,7 +138,11 @@ export default function StaffDashboard() {
         const monthPresent = monthAttendance.filter(
             (a: any) => a.is_present
         ).length;
-        const totalAllowance = monthPresent * 40;
+        // Use stored allowance_earned to match what admin sees
+        const totalAllowance = monthAttendance.reduce(
+            (sum: number, a: any) => sum + Number(a.allowance_earned || 0),
+            0
+        );
         const totalAdvances = monthAdvances.reduce(
             (sum, item) => sum + Number(item.amount),
             0
@@ -128,7 +151,12 @@ export default function StaffDashboard() {
             Number(profile?.salary || 0) +
             totalAllowance -
             totalAdvances;
-        const isPresent = !!todayRecord;
+        // Present if attendance table says so, OR if currently active/on break via sessions
+        const liveStatus = attendanceStatus?.current_status;
+        const isPresent =
+            todayRecord?.is_present ||
+            liveStatus === "active" ||
+            liveStatus === "break";
 
         return {
             monthPresent,
@@ -137,7 +165,7 @@ export default function StaffDashboard() {
             netSalary,
             isPresent,
         };
-    }, [monthAttendance, monthAdvances, profile?.salary, todayRecord]);
+    }, [monthAttendance, monthAdvances, profile?.salary, todayRecord, attendanceStatus]);
 
     if (userLoading || profileLoading || !profile) {
         return (

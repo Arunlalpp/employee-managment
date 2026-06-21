@@ -7,7 +7,7 @@ interface LoadingProps extends HTMLAttributes<HTMLDivElement> {
   label?: string;
 }
 
-export default function Loading({ className, label = "OGGY", ...props }: LoadingProps) {
+export default function Loading({ className, label = "OGGI", ...props }: LoadingProps) {
   return (
     <div
       className={cn(

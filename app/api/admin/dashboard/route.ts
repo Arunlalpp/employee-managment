@@ -98,6 +98,10 @@ export async function GET() {
         const today =
             getLocalDate();
 
+        const now = new Date();
+        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+        const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, "0")}`;
+
         const [
             staffRes,
             attendanceRes,
@@ -138,10 +142,14 @@ export async function GET() {
                     ]
                 ),
 
+            // Current month only — avoids accumulating all-time advances
             auth.supabase
                 .from("advances")
-                .select("*"),
+                .select("*")
+                .gte("date", monthStart)
+                .lte("date", monthEnd),
 
+            // Deductions table has no date column — fetch all
             auth.supabase
                 .from("deductions")
                 .select("*"),

@@ -110,10 +110,13 @@ export async function GET(
                 .gte("date", monthStart)
                 .lte("date", monthEnd),
 
+            // Filter requests to selected month so the list matches the deduction stats
             supabase
                 .from("advance_requests")
                 .select("*")
                 .eq("staff_id", profile.id)
+                .gte("requested_at", `${monthStart}T00:00:00`)
+                .lte("requested_at", `${monthEnd}T23:59:59`)
                 .order("requested_at", {
                     ascending: false,
                 }),

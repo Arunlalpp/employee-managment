@@ -2,6 +2,12 @@ import { NextRequest, NextResponse }
     from "next/server";
 import { createServerSupabaseClient }
     from "@/lib/supabase-server";
+import { createClient } from "@supabase/supabase-js";
+
+const serviceSupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 interface Props {
     params: {
@@ -142,4 +148,37 @@ export async function GET(
         advances:
             advancesRes.data || [],
     });
+}
+
+export async function PATCH(
+    req: NextRequest,
+    { params }: Props
+) {
+    const auth = await requireAdmin();
+    if (auth.error) return auth.error;
+
+    try {
+        const body = await req.json();
+        const updates: Record<string, any> = {};
+
+        if (body.name !== undefined) updates.name = String(body.name).trim();
+        if (body.salary !== undefined) updates.salary = Number(body.salary);
+        if (body.is_active !== undefined) updates.is_active = Boolean(body.is_active);
+
+        if (Object.keys(updates).length === 0) {
+            return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+        }
+
+        const { data, error } = await serviceSupabase
+            .from("profiles")
+            .update(updates)
+            .eq("id", params.id)
+            .select()
+            .single();
+
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ staff: data });
+    } catch {
+        return NextResponse.json({ error: "Failed to update staff" }, { status: 500 });
+    }
 }

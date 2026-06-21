@@ -382,44 +382,68 @@ export function useUpdateAdvanceRequest() {
             request: any;
             status: "approved" | "rejected";
         }) => {
-            if (
-                status ===
-                "approved"
-            ) {
-                await addAdvance.mutateAsync({
-                    staffId:
-                        request.staff_id,
-                    amount:
-                        request.amount,
-                    reason:
-                        request.reason,
-                    excludeRequestId:
-                        request.id,
-                });
-            }
-
-            const { error } =
-                await supabase
+            if (status === "approved") {
+                // Mark approved FIRST to prevent double-approval race
+                const { error: statusError } = await supabase
                     .from("advance_requests")
                     .update({
-                        status,
-                        ...(status ===
-                        "approved"
-                            ? {
-                                  approved_at:
-                                      new Date().toISOString(),
-                              }
-                            : {}),
+                        status: "approved",
+                        approved_at: new Date().toISOString(),
                     })
-                    .eq(
-                        "id",
-                        request.id
-                    );
+                    .eq("id", request.id);
 
-            if (error) {
-                throw error;
+                if (statusError) throw statusError;
+
+                try {
+                    // excludeRequestId not needed — request is already "approved" so
+                    // validation won't count it as pending anymore
+                    await addAdvance.mutateAsync({
+                        staffId: request.staff_id,
+                        amount: request.amount,
+                        reason: request.reason,
+                    });
+                } catch (advanceError) {
+                    // Revert status so admin can retry
+                    await supabase
+                        .from("advance_requests")
+                        .update({ status: "pending", approved_at: null })
+                        .eq("id", request.id);
+                    throw advanceError;
+                }
+
+                // Notify staff of approval
+                fetch("/api/admin/send-notification", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        staffId: request.staff_id,
+                        title: "Advance Request Approved",
+                        message: `Your advance request of ₹${request.amount} has been approved.`,
+                        type: "success",
+                    }),
+                }).catch(() => {}); // fire-and-forget
+
+                return;
             }
 
+            const { error } = await supabase
+                .from("advance_requests")
+                .update({ status })
+                .eq("id", request.id);
+
+            if (error) throw error;
+
+            // Notify staff of rejection
+            fetch("/api/admin/send-notification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    staffId: request.staff_id,
+                    title: "Advance Request Rejected",
+                    message: `Your advance request of ₹${request.amount} was not approved${request.reason ? ` (${request.reason})` : ""}.`,
+                    type: "error",
+                }),
+            }).catch(() => {}); // fire-and-forget
         },
         onSuccess: () => {
             queryClient.invalidateQueries({

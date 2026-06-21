@@ -224,24 +224,23 @@ export default function StaffSalary() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
                 <h2 className="text-xl font-semibold mb-5">Attendance History</h2>
                 <div className="space-y-3">
+                    {attendance.length === 0 && (
+                        <p className="text-center text-zinc-500 py-6">No attendance records</p>
+                    )}
                     {attendance.map((item: any) => (
                         <div key={item.id} className="bg-zinc-800 rounded-2xl p-4">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium">{format(new Date(item.date), "dd MMM yyyy")}</p>
-                                    <p className="text-xs text-zinc-500 mt-1">
-                                        {item.check_in
-                                            ? new Date(item.check_in).toLocaleTimeString([], {
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                            })
-                                            : "--"}
-                                    </p>
-                                </div>
+                                <p className="font-medium">
+                                    {format(parseISO(item.date), "dd MMM yyyy")}
+                                </p>
                                 <div className="text-right">
-                                    <p className="text-green-500 font-semibold">+₹{item.allowance_earned || 0}</p>
+                                    <p className="text-green-500 font-semibold">
+                                        +₹{item.allowance_earned || 0}
+                                    </p>
                                     {Number(item.overtime_bonus || 0) > 0 && (
-                                        <p className="text-blue-400 text-xs mt-1">OT +₹{item.overtime_bonus}</p>
+                                        <p className="text-blue-400 text-xs mt-1">
+                                            OT +₹{item.overtime_bonus}
+                                        </p>
                                     )}
                                 </div>
                             </div>

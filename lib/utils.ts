@@ -51,5 +51,5 @@ export function getWorkingDays(month: string): number {
 
 export const STORE_OPEN_TIME = "09:30";
 export const STORE_CLOSE_TIME = "22:30";
-export const DAILY_ALLOWANCE = 30;
+export const DAILY_ALLOWANCE = 40;
 export const TOTAL_STAFF_SALARY = 14000;
