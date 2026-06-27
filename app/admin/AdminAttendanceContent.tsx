@@ -22,6 +22,7 @@ import {
     Save,
     Plus,
     XCircle,
+    Users,
 } from "lucide-react";
 import Loading from "@/components/Loading";
 
@@ -674,33 +675,31 @@ export default function AdminAttendanceContent() {
                     <GlobalSearchFilter onFilterChange={setSearchFilters} />
 
                     {filteredStaffMembers.length === 0 ? (
-                        <div className="text-center text-zinc-400 py-12">
-                            No staff members found
+                        <div className="flex flex-col items-center py-16 text-zinc-600">
+                            <Users className="w-9 h-9 mb-2" />
+                            <p className="text-sm">No staff members found</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
                             {filteredStaffMembers.map((staff) => (
-                                <div
+                                <Link
                                     key={staff.id}
-                                    className="bg-zinc-900 border border-zinc-800 rounded-lg p-4"
+                                    href={`/admin/staff/${staff.id}?from=attendance-staff`}
+                                    className="flex items-center gap-4 bg-zinc-900 border border-zinc-800 rounded-3xl p-4 hover:border-zinc-700 active:scale-[0.98] transition-all"
                                 >
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">
-                                            {staff.name?.charAt(0) || "?"}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-white">{staff.name}</h3>
-                                            <p className="text-zinc-400 text-sm">{staff.email}</p>
-                                        </div>
+                                    <div className="w-11 h-11 rounded-2xl bg-yellow-500/15 flex items-center justify-center text-yellow-400 font-bold text-lg shrink-0">
+                                        {staff.name?.charAt(0)?.toUpperCase() || "?"}
                                     </div>
-                                    <p className="text-yellow-400 font-semibold">₹{staff.salary}</p>
-                                    <Link
-                                        href={`/admin/staff/${staff.id}?from=attendance-staff`}
-                                        className="mt-3 block text-center bg-yellow-500/10 text-yellow-400 py-2 rounded hover:bg-yellow-500/20 transition"
-                                    >
-                                        View Details
-                                    </Link>
-                                </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-white truncate">{staff.name}</p>
+                                        <p className="text-zinc-500 text-sm truncate">{staff.email}</p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <p className="font-bold text-yellow-400">₹{Number(staff.salary).toLocaleString("en-IN")}</p>
+                                        <p className="text-zinc-600 text-xs mt-0.5">monthly</p>
+                                    </div>
+                                    <ChevronRight className="w-4 h-4 text-zinc-700 shrink-0" />
+                                </Link>
                             ))}
                         </div>
                     )}

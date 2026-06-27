@@ -11,11 +11,14 @@ import {
 
 import {
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     X,
     Check,
     Loader2,
     TrendingDown,
     IndianRupee,
+    Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -227,60 +230,45 @@ export default function AdminSalaryPage() {
         <main className="min-h-screen bg-black text-white p-4">
 
             {/* HEADER */}
-            <h1 className="text-3xl font-bold mb-4">
-                Salary
-            </h1>
+            <div className="flex items-center justify-between mb-5">
+                <div>
+                    <h1 className="text-3xl font-bold">Salary</h1>
+                    <p className="text-zinc-500 text-sm mt-0.5">{salaryData.length} staff members</p>
+                </div>
+                <div className="w-10 h-10 rounded-2xl bg-yellow-500/10 flex items-center justify-center">
+                    <Wallet className="w-5 h-5 text-yellow-400" />
+                </div>
+            </div>
 
             {/* MONTH SWITCH */}
             <div className="flex items-center gap-2 mb-5">
-
                 <button
-                    onClick={() =>
-                        setSelectedMonth(
-                            prevMonth
-                        )
-                    }
-                    className="bg-zinc-900 px-4 py-2 rounded-xl"
+                    onClick={() => setSelectedMonth(prevMonth)}
+                    className="w-11 h-11 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-95 transition-all"
                 >
-                    ‹
+                    <ChevronLeft className="w-5 h-5" />
                 </button>
-
-                <div className="flex-1 bg-zinc-900 py-2 rounded-xl text-center">
-                    {getMonthLabel(
-                        selectedMonth
-                    )}
+                <div className="flex-1 h-11 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                    <p className="font-semibold">{getMonthLabel(selectedMonth)}</p>
                 </div>
-
                 <button
-                    onClick={() =>
-                        setSelectedMonth(
-                            nextMonth
-                        )
-                    }
-                    className="bg-zinc-900 px-4 py-2 rounded-xl"
+                    onClick={() => setSelectedMonth(nextMonth)}
+                    className="w-11 h-11 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-95 transition-all"
                 >
-                    ›
+                    <ChevronRight className="w-5 h-5" />
                 </button>
-
             </div>
 
             {/* PAYROLL CARD */}
-            <div className="bg-yellow-900/20 border border-yellow-700 rounded-2xl p-5 mb-5">
-
-                <p className="text-yellow-500 text-xs uppercase">
+            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-yellow-900/50 via-zinc-900 to-zinc-900 border border-yellow-500/20 p-6 mb-5">
+                <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-yellow-500/10 blur-3xl pointer-events-none" />
+                <p className="text-yellow-500/80 text-xs uppercase tracking-widest font-semibold mb-1">
                     Total Payroll
                 </p>
-
-                <h1 className="text-4xl font-bold text-yellow-400 mt-2">
-                    {formatCurrency(
-                        totalPayroll
-                    )}
+                <h1 className="text-4xl font-light text-yellow-400">
+                    {formatCurrency(totalPayroll)}
                 </h1>
-
-                <p className="text-zinc-400 text-sm mt-1">
-                    Net salary after deductions
-                </p>
-
+                <p className="text-zinc-500 text-sm mt-1">Net salary after all deductions</p>
             </div>
 
             {/* STAFF LIST */}
@@ -301,80 +289,35 @@ export default function AdminSalaryPage() {
                         return (
 
                             <div
-                                key={
-                                    staff.id
-                                }
-                                className="bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800"
+                                key={staff.id}
+                                className="bg-zinc-900 rounded-3xl overflow-hidden border border-zinc-800"
                             >
-
                                 {/* HEADER */}
                                 <button
-                                    onClick={() =>
-                                        setExpandedStaff(
-                                            isExpanded
-                                                ? null
-                                                : staff.id
-                                        )
-                                    }
-                                    className="w-full p-4 flex items-center justify-between"
+                                    onClick={() => setExpandedStaff(isExpanded ? null : staff.id)}
+                                    className="w-full p-4 flex items-center justify-between gap-3"
                                 >
-
-                                    <div className="flex items-center gap-3">
-
-                                        <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">
-                                            {staff?.name
-                                                ? staff.name
-                                                    .trim()
-                                                    .charAt(
-                                                        0
-                                                    )
-                                                    .toUpperCase()
-                                                : "?"}
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-10 h-10 rounded-2xl bg-yellow-500/15 flex items-center justify-center text-yellow-400 font-bold shrink-0">
+                                            {staff?.name?.trim().charAt(0).toUpperCase() || "?"}
                                         </div>
-
-                                        <div className="text-left">
-
-                                            <h2 className="font-semibold">
-                                                {staff.name}
-                                            </h2>
-
-                                            <p className="text-zinc-400 text-xs">
-                                                {
-                                                    staff.daysPresent
-                                                }
-                                                {" "}
-                                                days present
-                                            </p>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div className="flex items-center gap-3">
-
-                                        <div className="text-right">
-
-                                            <h2 className="font-bold text-yellow-400">
-                                                {formatCurrency(
-                                                    staff.netSalary
-                                                )}
-                                            </h2>
-
+                                        <div className="text-left min-w-0">
+                                            <h2 className="font-semibold truncate">{staff.name}</h2>
                                             <p className="text-zinc-500 text-xs">
-                                                Net Pay
+                                                {staff.daysPresent} days · ₹{staff.allowance} allowance
                                             </p>
-
                                         </div>
-
-                                        <ChevronDown
-                                            className={`w-4 h-4 transition-transform ${isExpanded
-                                                    ? "rotate-180"
-                                                    : ""
-                                                }`}
-                                        />
-
                                     </div>
 
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <div className="text-right">
+                                            <h2 className="font-bold text-yellow-400">
+                                                {formatCurrency(staff.netSalary)}
+                                            </h2>
+                                            <p className="text-zinc-600 text-xs">net pay</p>
+                                        </div>
+                                        <ChevronDown className={`w-4 h-4 text-zinc-600 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                    </div>
                                 </button>
 
                                 {/* EXPANDED */}
@@ -428,12 +371,8 @@ export default function AdminSalaryPage() {
                                         />
 
                                         <button
-                                            onClick={() =>
-                                                setShowAdvanceModal(
-                                                    staff.id
-                                                )
-                                            }
-                                            className="mt-4 w-full border border-red-500 text-red-400 rounded-xl py-3 flex items-center justify-center gap-2"
+                                            onClick={() => setShowAdvanceModal(staff.id)}
+                                            className="mt-4 w-full bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl py-3 flex items-center justify-center gap-2 hover:bg-red-500/15 active:scale-[0.98] transition-all"
                                         >
 
                                             <TrendingDown className="w-4 h-4" />

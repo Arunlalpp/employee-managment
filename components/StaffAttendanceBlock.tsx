@@ -1,10 +1,9 @@
 "use client";
 
-import {
-    useEffect,
-    useMemo,
-    useState,
-} from "react";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Coffee, LogIn, LogOut, Play, Clock } from "lucide-react";
+import { createClient } from "@/lib/supabase";
 
 function toIST(isoStr: string): string {
     return new Date(isoStr).toLocaleTimeString("en-IN", {
@@ -15,675 +14,258 @@ function toIST(isoStr: string): string {
     });
 }
 
-import {
-    useMutation,
-    useQuery,
-    useQueryClient,
-} from "@tanstack/react-query";
+function msToHMS(ms: number) {
+    const totalSecs = Math.floor(ms / 1000);
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    return {
+        h: String(h).padStart(2, "0"),
+        m: String(m).padStart(2, "0"),
+        s: String(s).padStart(2, "0"),
+    };
+}
 
-import {
-    Coffee,
-    Play,
-    Square,
-} from "lucide-react";
+type Props = { staffId: string };
 
-import { createClient }
-    from "@/lib/supabase";
-
-type Props = {
-    staffId: string;
-};
-
-export default function StaffAttendanceBlock({
-    staffId,
-}: Props) {
-
-    const supabase =
-        createClient();
-
-    const queryClient =
-        useQueryClient();
+export default function StaffAttendanceBlock({ staffId }: Props) {
+    const supabase = createClient();
+    const queryClient = useQueryClient();
 
     const today = new Intl.DateTimeFormat("en-CA", {
         timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
+        year: "numeric", month: "2-digit", day: "2-digit",
     }).format(new Date());
 
-    // STATUS
-    const {
-        data: status,
-    } =
-        useQuery({
+    const { data: status } = useQuery({
+        queryKey: ["attendance-status", staffId],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("staff_attendance_status")
+                .select("*")
+                .eq("staff_id", staffId)
+                .maybeSingle();
+            return data;
+        },
+        refetchInterval: 30_000,
+    });
 
-            queryKey: [
-                "attendance-status",
-                staffId,
-            ],
-
-            queryFn:
-                async () => {
-
-                    const {
-                        data,
-                    } =
-                        await supabase
-                            .from(
-                                "staff_attendance_status"
-                            )
-                            .select("*")
-                            .eq(
-                                "staff_id",
-                                staffId
-                            )
-                            .single();
-
-                    return data;
-                },
-        });
-
-    // SESSIONS
-    const {
-        data: sessions = [],
-    } =
-        useQuery({
-
-            queryKey: [
-                "attendance-sessions",
-                staffId,
-                today,
-            ],
-
-            queryFn:
-                async () => {
-
-                    const {
-                        data,
-                    } =
-                        await supabase
-                            .from(
-                                "attendance_sessions"
-                            )
-                            .select("*")
-                            .eq(
-                                "staff_id",
-                                staffId
-                            )
-                            .eq(
-                                "attendance_date",
-                                today
-                            )
-                            .order(
-                                "created_at",
-                                {
-                                    ascending: true,
-                                }
-                            );
-
-                    return (
-                        data || []
-                    );
-                },
-        });
+    const { data: sessions = [] } = useQuery({
+        queryKey: ["attendance-sessions", staffId, today],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("attendance_sessions")
+                .select("*")
+                .eq("staff_id", staffId)
+                .eq("attendance_date", today)
+                .order("created_at", { ascending: true });
+            return data || [];
+        },
+    });
 
     const refresh = () => {
-
-        queryClient.invalidateQueries({
-            queryKey: [
-                "attendance-status",
-            ],
-        });
-
-        queryClient.invalidateQueries({
-            queryKey: [
-                "attendance-sessions",
-            ],
-        });
-
-        // Invalidate attendance table queries so Today Status, Days Present,
-        // Weekly Attendance, and Monthly stats all refresh immediately
-        queryClient.invalidateQueries({
-            queryKey: ["attendance"],
-        });
+        queryClient.invalidateQueries({ queryKey: ["attendance-status"] });
+        queryClient.invalidateQueries({ queryKey: ["attendance-sessions"] });
+        queryClient.invalidateQueries({ queryKey: ["attendance"] });
     };
 
-    // CHECK IN
-    const checkInMutation =
-        useMutation({
-
-            mutationFn:
-                async () => {
-
-                    await fetch(
-                        "/api/staff/check-in",
-                        {
-                            method:
-                                "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json",
-                            },
-
-                            body: JSON.stringify(
-                                {
-                                    staffId,
-                                }
-                            ),
-                        }
-                    );
-                },
-
-            onSuccess:
-                refresh,
+    const post = (url: string) => async () => {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ staffId }),
         });
+        if (!res.ok) throw new Error(await res.text());
+    };
 
-    // BREAK
-    const breakMutation =
-        useMutation({
+    const checkIn       = useMutation({ mutationFn: post("/api/staff/check-in"),       onSuccess: refresh });
+    const goBreak       = useMutation({ mutationFn: post("/api/staff/break"),           onSuccess: refresh });
+    const resume        = useMutation({ mutationFn: post("/api/staff/resume"),          onSuccess: refresh });
+    const finalCheckout = useMutation({ mutationFn: post("/api/staff/final-checkout"), onSuccess: refresh });
 
-            mutationFn:
-                async () => {
+    const loading = checkIn.isPending || goBreak.isPending || resume.isPending || finalCheckout.isPending;
 
-                    await fetch(
-                        "/api/staff/break",
-                        {
-                            method:
-                                "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json",
-                            },
-
-                            body: JSON.stringify(
-                                {
-                                    staffId,
-                                }
-                            ),
-                        }
-                    );
-                },
-
-            onSuccess:
-                refresh,
+    // Live elapsed time (only ticks when active)
+    const getWorkedMs = () => {
+        let total = 0;
+        (sessions as any[]).forEach((s) => {
+            if (!s.start_time) return;
+            const start = new Date(s.start_time).getTime();
+            const end = s.end_time ? new Date(s.end_time).getTime() : Date.now();
+            total += end - start;
         });
+        return total;
+    };
 
-    // RESUME
-    const resumeMutation =
-        useMutation({
-
-            mutationFn:
-                async () => {
-
-                    await fetch(
-                        "/api/staff/resume",
-                        {
-                            method:
-                                "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json",
-                            },
-
-                            body: JSON.stringify(
-                                {
-                                    staffId,
-                                }
-                            ),
-                        }
-                    );
-                },
-
-            onSuccess:
-                refresh,
-        });
-
-    // FINAL CHECKOUT
-    const finalCheckoutMutation =
-        useMutation({
-
-            mutationFn:
-                async () => {
-
-                    await fetch(
-                        "/api/staff/final-checkout",
-                        {
-                            method:
-                                "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json",
-                            },
-
-                            body: JSON.stringify(
-                                {
-                                    staffId,
-                                }
-                            ),
-                        }
-                    );
-                },
-
-            onSuccess:
-                refresh,
-        });
-
-    // TOTAL WORK TIME
-    const getWorkedMs =
-        () => {
-
-            let total = 0;
-
-            sessions.forEach(
-                (session: any) => {
-
-                    if (
-                        !session.start_time
-                    ) {
-                        return;
-                    }
-
-                    const start =
-                        new Date(
-                            session.start_time
-                        ).getTime();
-
-                    const end =
-                        session.end_time
-                            ? new Date(
-                                session.end_time
-                            ).getTime()
-                            : new Date().getTime();
-
-                    total +=
-                        end - start;
-                }
-            );
-
-            return total;
-        };
-
-    const [
-        elapsed,
-        setElapsed,
-    ] =
-        useState("00:00:00");
-        
-    const currentStatus =
-        status?.current_status ||
-        "offline";
+    const [workedMs, setWorkedMs] = useState(0);
+    const currentStatus = status?.current_status || "offline";
 
     useEffect(() => {
-
-        const update =
-            () => {
-
-                const diff =
-                    getWorkedMs();
-
-                const hrs =
-                    Math.floor(
-                        diff /
-                        1000 /
-                        60 /
-                        60
-                    );
-
-                const mins =
-                    Math.floor(
-                        (
-                            diff /
-                            1000 /
-                            60
-                        ) % 60
-                    );
-
-                const secs =
-                    Math.floor(
-                        (
-                            diff /
-                            1000
-                        ) % 60
-                    );
-
-                setElapsed(
-                    `${String(
-                        hrs
-                    ).padStart(
-                        2,
-                        "0"
-                    )}:${String(
-                        mins
-                    ).padStart(
-                        2,
-                        "0"
-                    )}:${String(
-                        secs
-                    ).padStart(
-                        2,
-                        "0"
-                    )}`
-                );
-            };
-
-        update();
-
-        if (currentStatus !== "active") {
-            return;
-        }
-
-        const interval =
-            setInterval(
-                update,
-                1000
-            );
-
-        return () =>
-            clearInterval(
-                interval
-            );
-
+        setWorkedMs(getWorkedMs());
+        if (currentStatus !== "active") return;
+        const iv = setInterval(() => setWorkedMs(getWorkedMs()), 1000);
+        return () => clearInterval(iv);
     }, [sessions, currentStatus]);
 
-    const [
-        hh,
-        mm,
-        ss,
-    ] =
-        elapsed.split(":");
+    const { h, m, s } = msToHMS(workedMs);
+    const checkInTime = (sessions as any[])[0]?.start_time;
+    const totalHours = workedMs / 3_600_000;
 
-    const loading =
-        checkInMutation.isPending ||
-        breakMutation.isPending ||
-        resumeMutation.isPending ||
-        finalCheckoutMutation.isPending;
-
-    const totalHours =
-        getWorkedMs() /
-        1000 /
-        60 /
-        60;
-
-    const overtime =
-        totalHours >= 8;
-
-    const currentSession =
-        sessions.find(
-            (s: any) =>
-                !s.end_time
-        );
-
-    return (
-        <div className="mb-5 bg-gradient-to-b from-zinc-900 to-zinc-950 border border-zinc-800 rounded-[28px] p-4 shadow-2xl">
-
-            {/* TIMER */}
-            <div className="flex items-center justify-center gap-2">
-
-                {[hh, mm, ss].map(
-                    (
-                        value,
-                        index
-                    ) => (
-
-                        <div
-                            key={
-                                index
-                            }
-                            className="flex items-center gap-2"
-                        >
-
-                            <div className="w-14 h-14 rounded-2xl bg-zinc-700/80 flex items-center justify-center">
-
-                                <span className="text-3xl font-light text-white">
-                                    {
-                                        value
-                                    }
-                                </span>
-
-                            </div>
-
-                            {index <
-                                2 && (
-                                    <span className="text-3xl text-zinc-500">
-                                        :
-                                    </span>
-                                )}
-
-                        </div>
-                    )
-                )}
-
-            </div>
-
-            {/* STATUS */}
-            <div className="mt-5 flex items-center justify-between">
-
-                <div>
-
-                    {currentStatus ===
-                        "offline" && (
-                            <p className="text-red-500 text-2xl font-bold">
-                                Offline
-                            </p>
-                        )}
-
-                    {currentStatus ===
-                        "active" && (
-                            <p className="text-green-500 text-2xl font-bold">
-                                Working
-                            </p>
-                        )}
-
-                    {currentStatus ===
-                        "break" && (
-                            <p className="text-yellow-400 text-2xl font-bold">
-                                On Break
-                            </p>
-                        )}
-
-                    <p className="text-zinc-500 text-sm mt-1">
-
-                        {sessions.length}
-                        {" "}
-                        session(s)
-                        today
-
-                    </p>
-
+    // ── OFFLINE ──────────────────────────────────────────────────────────────
+    if (currentStatus === "offline") {
+        return (
+            <div className="mb-5 bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+                <div className="px-6 pt-6 pb-2 flex items-center gap-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-zinc-600" />
+                    <span className="text-zinc-400 font-medium">Not checked in</span>
                 </div>
 
-                {/* ACTIONS */}
-                <div className="flex gap-2">
-
-                    {currentStatus ===
-                        "offline" && (
-
-                            <button
-                                onClick={() =>
-                                    checkInMutation.mutate()
-                                }
-                                disabled={
-                                    loading
-                                }
-                                className="h-11 px-5 rounded-2xl bg-emerald-500 text-white font-semibold"
-                            >
-
-                                Check In
-
-                            </button>
-                        )}
-
-                    {currentStatus ===
-                        "active" && (
-
+                <div className="px-6 pb-6 pt-4">
+                    <p className="text-zinc-500 text-sm mb-6">
+                        Tap below to start your shift and begin tracking your hours.
+                    </p>
+                    <button
+                        onClick={() => checkIn.mutate()}
+                        disabled={loading}
+                        className="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition-all text-white font-semibold text-lg flex items-center justify-center gap-3 disabled:opacity-60"
+                    >
+                        {loading ? (
+                            <span className="animate-pulse">Starting…</span>
+                        ) : (
                             <>
-                                <button
-                                    onClick={() =>
-                                        breakMutation.mutate()
-                                    }
-                                    disabled={
-                                        loading
-                                    }
-                                    className="h-11 px-4 rounded-2xl bg-yellow-500 text-black font-semibold flex items-center gap-2"
-                                >
-
-                                    <Coffee className="w-4 h-4" />
-
-                                    Break
-
-                                </button>
-
-                                <button
-                                    onClick={() =>
-                                        finalCheckoutMutation.mutate()
-                                    }
-                                    disabled={
-                                        loading
-                                    }
-                                    className="h-11 px-4 rounded-2xl bg-orange-500 text-white font-semibold flex items-center gap-2"
-                                >
-
-                                    <Square className="w-4 h-4" />
-
-                                    Checkout
-
-                                </button>
+                                <LogIn className="w-5 h-5" />
+                                Check In
                             </>
                         )}
-
-                    {currentStatus ===
-                        "break" && (
-
-                            <button
-                                onClick={() =>
-                                    resumeMutation.mutate()
-                                }
-                                disabled={
-                                    loading
-                                }
-                                className="h-11 px-5 rounded-2xl bg-blue-500 text-white font-semibold flex items-center gap-2"
-                            >
-
-                                <Play className="w-4 h-4" />
-
-                                Resume
-
-                            </button>
-                        )}
-
+                    </button>
                 </div>
-
             </div>
+        );
+    }
 
-            {/* SUMMARY */}
-            <div className="mt-5 pt-5 border-t border-zinc-800 grid grid-cols-2 gap-4">
-
-                <div>
-
-                    <p className="text-zinc-500 text-xs mb-1">
-                        Started
-                    </p>
-
-                    <p className="text-white font-semibold">
-                        {sessions[0]?.start_time ? toIST(sessions[0].start_time) : "--"}
-                    </p>
-
+    // ── ACTIVE ───────────────────────────────────────────────────────────────
+    if (currentStatus === "active") {
+        return (
+            <div className="mb-5 bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+                {/* Header */}
+                <div className="px-6 pt-5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-emerald-400 font-semibold">Working</span>
+                    </div>
+                    {checkInTime && (
+                        <span className="text-zinc-500 text-sm">
+                            Since {toIST(checkInTime)}
+                        </span>
+                    )}
                 </div>
 
-                <div>
+                {/* Big timer */}
+                <div className="px-6 pt-5 pb-4">
+                    <div className="flex items-end gap-1">
+                        <span className="text-6xl font-bold text-white tabular-nums tracking-tight">{h}</span>
+                        <span className="text-4xl text-zinc-500 mb-1">:</span>
+                        <span className="text-6xl font-bold text-white tabular-nums tracking-tight">{m}</span>
+                        <span className="text-4xl text-zinc-500 mb-1">:</span>
+                        <span className="text-6xl font-bold text-zinc-400 tabular-nums tracking-tight">{s}</span>
+                    </div>
+                    {totalHours >= 8 && (
+                        <p className="mt-2 text-emerald-400 text-sm font-medium">
+                            Overtime eligible
+                        </p>
+                    )}
+                </div>
 
-                    <p className="text-zinc-500 text-xs mb-1">
-                        Overtime
-                    </p>
-
-                    <p
-                        className={`font-semibold ${overtime
-                            ? "text-green-400"
-                            : "text-zinc-400"
-                            }`}
+                {/* Actions */}
+                <div className="px-5 pb-5 grid grid-cols-2 gap-3">
+                    <button
+                        onClick={() => goBreak.mutate()}
+                        disabled={loading}
+                        className="h-13 py-3.5 rounded-2xl bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 active:scale-95 transition-all text-yellow-400 font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
                     >
-
-                        {overtime
-                            ? "Eligible"
-                            : "No"}
-
-                    </p>
-
+                        <Coffee className="w-4 h-4" />
+                        Take Break
+                    </button>
+                    <button
+                        onClick={() => finalCheckout.mutate()}
+                        disabled={loading}
+                        className="h-13 py-3.5 rounded-2xl bg-orange-500 hover:bg-orange-400 active:scale-95 transition-all text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        Check Out
+                    </button>
                 </div>
 
-            </div>
-
-            {/* SESSION HISTORY */}
-            {sessions.length >
-                0 && (
-
-                    <div className="mt-5 pt-5 border-t border-zinc-800 space-y-3">
-
-                        {sessions.map(
-                            (
-                                session: any,
-                                index
-                            ) => (
-
-                                <div
-                                    key={
-                                        session.id
-                                    }
-                                    className="bg-zinc-800 rounded-2xl p-3 flex items-center justify-between"
-                                >
-
-                                    <div>
-
-                                        <p className="text-sm text-zinc-400">
-                                            Session{" "}
-                                            {index +
-                                                1}
-                                        </p>
-
-                                        <p className="text-white font-medium">
-                                            {toIST(session.start_time)}
-                                            {" - "}
-                                            {session.end_time ? toIST(session.end_time) : "Running"}
-                                        </p>
-
-                                    </div>
-
-                                    <div className="text-green-400 text-sm font-semibold">
-
-                                        {(
-                                            (
-                                                (
-                                                    session.end_time
-                                                        ? new Date(
-                                                            session.end_time
-                                                        ).getTime()
-                                                        : new Date().getTime()
-                                                ) -
-                                                new Date(
-                                                    session.start_time
-                                                ).getTime()
-                                            ) /
-                                            1000 /
-                                            60 /
-                                            60
-                                        ).toFixed(
-                                            1
-                                        )}
-                                        h
-
-                                    </div>
-
+                {/* Session log */}
+                {(sessions as any[]).length > 0 && (
+                    <div className="border-t border-zinc-800 px-5 py-4 space-y-2">
+                        <p className="text-zinc-500 text-xs uppercase tracking-wider mb-3">Today's sessions</p>
+                        {(sessions as any[]).map((session: any, i: number) => (
+                            <div key={session.id} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-3.5 h-3.5 text-zinc-600" />
+                                    <span className="text-sm text-zinc-300">
+                                        {toIST(session.start_time)}
+                                        {" – "}
+                                        {session.end_time ? toIST(session.end_time) : <span className="text-emerald-400">Now</span>}
+                                    </span>
                                 </div>
-                            )
-                        )}
-
+                                <span className="text-xs text-zinc-500">
+                                    {(((session.end_time ? new Date(session.end_time).getTime() : Date.now()) - new Date(session.start_time).getTime()) / 3_600_000).toFixed(1)}h
+                                </span>
+                            </div>
+                        ))}
                     </div>
                 )}
+            </div>
+        );
+    }
 
+    // ── BREAK ─────────────────────────────────────────────────────────────────
+    return (
+        <div className="mb-5 bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+            {/* Header */}
+            <div className="px-6 pt-5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+                    <span className="text-yellow-400 font-semibold">On Break</span>
+                </div>
+                {checkInTime && (
+                    <span className="text-zinc-500 text-sm">Since {toIST(checkInTime)}</span>
+                )}
+            </div>
+
+            {/* Worked so far */}
+            <div className="px-6 pt-5 pb-2">
+                <p className="text-zinc-500 text-xs mb-1">Worked so far</p>
+                <div className="flex items-end gap-1">
+                    <span className="text-5xl font-bold text-zinc-300 tabular-nums">{h}</span>
+                    <span className="text-3xl text-zinc-600 mb-1">:</span>
+                    <span className="text-5xl font-bold text-zinc-300 tabular-nums">{m}</span>
+                    <span className="text-3xl text-zinc-600 mb-1">:</span>
+                    <span className="text-5xl font-bold text-zinc-500 tabular-nums">{s}</span>
+                </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-5 py-5 grid grid-cols-2 gap-3">
+                <button
+                    onClick={() => resume.mutate()}
+                    disabled={loading}
+                    className="h-13 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition-all text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                    <Play className="w-4 h-4 fill-white" />
+                    Resume
+                </button>
+                <button
+                    onClick={() => finalCheckout.mutate()}
+                    disabled={loading}
+                    className="h-13 py-3.5 rounded-2xl bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 active:scale-95 transition-all text-orange-400 font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                    <LogOut className="w-4 h-4" />
+                    Check Out
+                </button>
+            </div>
         </div>
     );
 }
