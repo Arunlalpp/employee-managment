@@ -44,7 +44,11 @@ export async function middleware(request: NextRequest) {
                     );
                     response = NextResponse.next({ request });
                     cookiesToSet.forEach(({ name, value, options }) =>
-                        response.cookies.set(name, value, options)
+                        response.cookies.set(name, value, {
+                            ...options,
+                            // Ensure tokens survive app restarts on mobile PWA
+                            maxAge: options.maxAge ?? 60 * 60 * 24 * 365,
+                        })
                     );
                 },
             },
@@ -52,12 +56,14 @@ export async function middleware(request: NextRequest) {
     );
 
     const {
-        data: { user },
-    } = await supabase.auth.getUser();
+        data: { session },
+    } = await supabase.auth.getSession();
 
-    if (!user) {
+    if (!session) {
         return NextResponse.redirect(new URL("/login", request.url));
     }
+
+    const user = session.user;
 
     const isAdminRoute = pathname.startsWith("/admin");
     const isStaffRoute = pathname.startsWith("/staff");
