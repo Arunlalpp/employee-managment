@@ -14,7 +14,9 @@ export const useAuth = () => {
             if (error) throw error;
             return data?.user || null;
         },
-        staleTime: 0,
-        gcTime: 5 * 60 * 1000,
+        staleTime: 5 * 60 * 1000,   // cached 5 min — middleware validates server-side on every request
+        gcTime: 10 * 60 * 1000,
+        refetchOnWindowFocus: false, // middleware handles protection; no need to re-auth on every tab switch
+        retry: false,
     });
 };

@@ -5,7 +5,6 @@ import { addMonths, format, parseISO, subMonths, startOfWeek } from "date-fns";
 import {
     TrendingDown,
     CalendarDays,
-    Trophy,
     Clock3,
     ChevronLeft,
     ChevronRight,
@@ -140,7 +139,7 @@ export default function StaffSalary() {
                 <StatBox
                     label="Allowance"
                     value={`₹${stats.allowance}`}
-                    sub={`@₹40/day`}
+                    sub="@₹40/day"
                     color="green"
                     icon={<CircleCheck className="w-4 h-4" />}
                 />
@@ -188,12 +187,6 @@ export default function StaffSalary() {
                         label="Overtime Bonus"
                         value={`+₹${stats.overtimeBonus}`}
                         color={stats.overtimeBonus > 0 ? "blue" : "zinc"}
-                    />
-                    <BreakdownRow
-                        icon={<Trophy className="w-3.5 h-3.5" />}
-                        label="Profit Bonus"
-                        value={`+₹${stats.profitBonus}`}
-                        color={stats.profitBonus > 0 ? "purple" : "zinc"}
                     />
                     <div className="h-px bg-zinc-800 my-2" />
                     <BreakdownRow

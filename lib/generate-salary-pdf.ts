@@ -8,7 +8,6 @@ interface SalaryData {
     baseSalary: number;
     allowance: number;
     overtimeBonus: number;
-    profitBonus: number;
     advances: number;
     netSalary: number;
     presentDays: number;
@@ -74,11 +73,6 @@ export function generateSalaryPDF(
             [
                 "OT Bonus",
                 `₹${data.overtimeBonus}`,
-            ],
-
-            [
-                "Profit Bonus",
-                `₹${data.profitBonus}`,
             ],
 
             [

@@ -33,18 +33,13 @@ export function useAttendance(
                     selectedDate
                 ),
 
-            staleTime:
-                isToday
-                    ? 1000 * 30
-                    : 5 * 60 * 1000,
+            // Always stale for today → forces a fetch on every mount so fresh check-ins appear immediately
+            staleTime: isToday ? 0 : 5 * 60 * 1000,
 
-            refetchOnWindowFocus:
-                enabled && isToday,
+            refetchOnWindowFocus: isToday,
 
-            refetchInterval:
-                enabled && isToday
-                    ? 1000 * 30
-                    : false,
+            // Poll every 15s (was 30s) so live check-ins appear quickly
+            refetchInterval: enabled && isToday ? 15 * 1000 : false,
 
             enabled,
         });

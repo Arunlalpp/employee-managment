@@ -93,7 +93,6 @@ export async function GET(
             attendanceRes,
             advancesRes,
             advanceRequestsRes,
-            reportRes,
         ] = await Promise.all([
             supabase
                 .from("attendance")
@@ -112,36 +111,16 @@ export async function GET(
                 .gte("date", monthStart)
                 .lte("date", monthEnd),
 
-            // Filter requests to selected month so the list matches the deduction stats
             supabase
                 .from("advance_requests")
                 .select("*")
                 .eq("staff_id", profile.id)
                 .gte("requested_at", `${monthStart}T00:00:00`)
                 .lte("requested_at", `${monthEnd}T23:59:59`)
-                .order("requested_at", {
-                    ascending: false,
-                }),
-
-            supabase
-                .from("monthly_store_reports")
-                .select("*")
-                .eq(
-                    "month",
-                    Number(monthNumber)
-                )
-                .eq(
-                    "year",
-                    Number(year)
-                )
-                .maybeSingle(),
+                .order("requested_at", { ascending: false }),
         ]);
 
-        if (
-            attendanceRes.error ||
-            advancesRes.error ||
-            advanceRequestsRes.error
-        ) {
+        if (attendanceRes.error || advancesRes.error || advanceRequestsRes.error) {
             return NextResponse.json(
                 {
                     error:
@@ -155,14 +134,9 @@ export async function GET(
             );
         }
 
-        const attendance =
-            attendanceRes.data || [];
-        const advances =
-            advancesRes.data || [];
-        const advanceRequests =
-            advanceRequestsRes.data || [];
-        const report =
-            reportRes.data;
+        const attendance = attendanceRes.data || [];
+        const advances = advancesRes.data || [];
+        const advanceRequests = advanceRequestsRes.data || [];
 
         const daysPresent =
             attendance.filter(
@@ -207,31 +181,18 @@ export async function GET(
                 profile.salary || 0
             );
 
-        const profitBonus =
-            Number(
-                report?.bonus_per_staff ||
-                    0
-            );
-
         return NextResponse.json({
             profile,
             attendance,
             advances,
             advanceRequests,
-            report,
             stats: {
                 daysPresent,
                 allowance,
                 overtimeBonus,
                 advanceTotal,
                 salary,
-                profitBonus,
-                netSalary:
-                    salary +
-                    allowance +
-                    overtimeBonus +
-                    profitBonus -
-                    advanceTotal,
+                netSalary: salary + allowance + overtimeBonus - advanceTotal,
             },
         });
     } catch (error) {
