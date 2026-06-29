@@ -102,8 +102,32 @@ export default function ReportsTabs({ attendanceData, payrollData, detailedData,
                                 </button>
                                 <button
                                     onClick={() => {
-                                        const msg = `Salary Slip\n\nEmployee: ${item.name}\nMonth: ${reportMonthLabel}\n\nBase Salary: ₹${item.baseSalary.toLocaleString("en-IN")}\nAllowance: ₹${item.allowance.toLocaleString("en-IN")}\nOT Bonus: ₹${item.overtimeBonus.toLocaleString("en-IN")}\nAdvances: ₹${item.advanceTotal.toLocaleString("en-IN")}\n\nNet Salary: ₹${item.netSalary.toLocaleString("en-IN")}`;
-                                        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+                                        const rs = (n: number) => `Rs. ${n.toLocaleString("en-IN")}`;
+                                        const gross = item.baseSalary + item.allowance + item.overtimeBonus;
+                                        const lines = [
+                                            `📋 *SALARY SLIP — ${reportMonthLabel.toUpperCase()}*`,
+                                            `━━━━━━━━━━━━━━━━━━━━`,
+                                            `👤 *${item.name}*`,
+                                            `📆 Days Present: *${item.presentDays}*`,
+                                            ``,
+                                            `💰 *EARNINGS*`,
+                                            `  • Base Salary        ${rs(item.baseSalary)}`,
+                                            `  • Attendance Allow.  ${rs(item.allowance)}`,
+                                            ...(item.overtimeBonus > 0 ? [`  • Overtime Bonus     ${rs(item.overtimeBonus)}`] : []),
+                                            `  ─────────────────────`,
+                                            `  Gross Earnings       *${rs(gross)}*`,
+                                            ...(item.advanceTotal > 0 ? [
+                                                ``,
+                                                `💳 *DEDUCTIONS*`,
+                                                `  • Advance Recovery   -${rs(item.advanceTotal)}`,
+                                            ] : []),
+                                            ``,
+                                            `━━━━━━━━━━━━━━━━━━━━`,
+                                            `✅ *NET SALARY:  ${rs(item.netSalary)}*`,
+                                            `━━━━━━━━━━━━━━━━━━━━`,
+                                            `_Employee Management System_`,
+                                        ];
+                                        window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`);
                                     }}
                                     className="bg-green-500 hover:bg-green-400 active:scale-[0.98] transition-all text-black rounded-2xl py-3 font-semibold text-sm"
                                 >
