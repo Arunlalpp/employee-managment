@@ -9,6 +9,7 @@ import {
     Providers,
 } from "./providers";
 import PwaInstaller from "@/components/PwaInstaller";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata:
     Metadata = {
@@ -139,6 +140,7 @@ export default function
                 </Providers>
 
                 <PwaInstaller />
+                <SpeedInsights />
 
             </body>
 
